@@ -1,5 +1,4 @@
-CREATE DATABASE swot_db;
-GO
+
 USE swot_db;
 GO
 
