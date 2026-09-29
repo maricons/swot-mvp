@@ -1,9 +1,31 @@
 const { sql, poolPromise } = require('../config/db');
 
 exports.listarOT = async (req, res) => {
+    const { estado, desde, hasta } = req.query;
     try {
         const pool = await poolPromise;
-        const result = await pool.request().query('SELECT * FROM orden_transporte');
+        const request = pool.request();
+        let query = `SELECT ot.*, c.nombre AS cliente_nombre
+                     FROM orden_transporte ot
+                     JOIN cliente c ON c.id = ot.cliente_id
+                     WHERE 1 = 1`;
+
+        if (estado) {
+            request.input('estado', sql.VarChar, estado);
+            query += ' AND ot.estado = @estado';
+        }
+        if (desde) {
+            request.input('desde', sql.Date, desde);
+            query += ' AND ot.fecha_creacion >= @desde';
+        }
+        if (hasta) {
+            // Incluye todo el día "hasta"
+            request.input('hasta', sql.Date, hasta);
+            query += ' AND ot.fecha_creacion < DATEADD(DAY, 1, @hasta)';
+        }
+        query += ' ORDER BY ot.fecha_creacion DESC';
+
+        const result = await request.query(query);
         res.json(result.recordset);
     } catch (error) {
         res.status(500).json({ error: error.message });
