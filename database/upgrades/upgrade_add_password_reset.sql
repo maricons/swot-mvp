@@ -2,7 +2,7 @@
 -- the moment a password last changed (to end old sessions) and the table of reset links.
 -- A fresh install does NOT need this file: init.sql already has all of it.
 -- Run it from the backend folder:
---   node scripts/run_sql.js ../database/upgrade_add_password_reset.sql
+--   node scripts/run_sql.js ../database/upgrades/upgrade_add_password_reset.sql
 USE swot_db;
 GO
 

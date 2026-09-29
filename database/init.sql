@@ -1,6 +1,6 @@
 -- SWOT: full schema and test data for a fresh install.
 -- Create the database first (CREATE DATABASE swot_db;), then run this file and procedures.sql.
--- An existing database with the old Spanish tables uses upgrade_to_english.sql instead.
+-- An existing database with the old Spanish tables uses upgrades/upgrade_to_english.sql instead.
 USE swot_db;
 GO
 

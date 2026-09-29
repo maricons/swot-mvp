@@ -1,7 +1,7 @@
 -- Adds the storage tariff (free days and daily rate per container type) to an existing database (safe to run more than once).
 -- A fresh install does NOT need this file: init.sql already has it.
 -- Run it from the backend folder:
---   node scripts/run_sql.js ../database/upgrade_add_billing.sql
+--   node scripts/run_sql.js ../database/upgrades/upgrade_add_billing.sql
 USE swot_db;
 GO
 
