@@ -20,6 +20,9 @@ api.interceptors.response.use(
     (error) => {
         if (error.response?.status === 401 && !error.config.url.includes('/auth/login')) {
             localStorage.clear();
+            // The login shows why the user was sent back
+            const disabled = error.response.data?.error === 'Cuenta desactivada';
+            sessionStorage.setItem('loginNotice', disabled ? 'Tu cuenta fue desactivada. Contacta al administrador.' : 'Tu sesión venció. Inicia sesión de nuevo.');
             window.location.assign('/');
         }
         return Promise.reject(error);

@@ -4,6 +4,7 @@ import api from '../services/api';
 import Topbar from '../components/Topbar';
 import StatusBadge from '../components/StatusBadge';
 import DeliveryModal from '../components/DeliveryModal';
+import ConfirmModal from '../components/ConfirmModal';
 import Reveal from '../components/Reveal';
 import { useToast } from '../components/Toast';
 
@@ -14,6 +15,7 @@ function DriverRoute() {
     const [version, setVersion] = useState(0);
     const [updating, setUpdating] = useState(null); // id of the order being changed
     const [delivering, setDelivering] = useState(null); // order whose proof of delivery is being filled in
+    const [failing, setFailing] = useState(null); // order waiting for the confirmation of a failed delivery
     const toast = useToast();
 
     useEffect(() => {
@@ -35,6 +37,7 @@ function DriverRoute() {
             toast(error.response?.data?.error || 'No se pudo cambiar el estado', 'error');
         } finally {
             setUpdating(null);
+            setFailing(null);
         }
     };
 
@@ -73,7 +76,7 @@ function DriverRoute() {
                                     <>
                                         <button className="btn btn-success" onClick={() => setDelivering(order)}>Entregar</button>
                                         <button className="btn btn-danger" disabled={updating === order.id}
-                                            onClick={() => changeStatus(order, 'Failed', 'fallida')}>
+                                            onClick={() => setFailing(order)}>
                                             Fallida
                                         </button>
                                     </>
@@ -86,6 +89,17 @@ function DriverRoute() {
                     )}
                 </div>
             </main>
+
+            {failing && (
+                <ConfirmModal
+                    title={`¿Marcar la OT #${failing.id} como fallida?`}
+                    message="Esto avisa que no se pudo entregar y no se puede deshacer desde tu hoja de ruta."
+                    confirmText="Sí, marcar como fallida"
+                    busy={updating === failing.id}
+                    onConfirm={() => changeStatus(failing, 'Failed', 'fallida')}
+                    onClose={() => setFailing(null)}
+                />
+            )}
 
             {delivering && (
                 <DeliveryModal

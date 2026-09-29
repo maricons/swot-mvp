@@ -40,16 +40,16 @@ Node.js 24 LTS, Git y Docker Desktop (para SQL Server).
 
 ### 2. Base de datos
 
-Levanta SQL Server (cambia la contraseña por una tuya, con mayúsculas, minúsculas, número y símbolo):
+Levanta SQL Server (cambia la contraseña por una tuya, con mayúsculas, minúsculas, número y símbolo). El volumen `swot-sql-data` guarda los datos fuera del contenedor: sin él, borrar el contenedor borra la base.
 
 ```bash
-docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=TuClave-Segura1" -p 1433:1433 --name sqlserver -d mcr.microsoft.com/mssql/server:2022-latest
+docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=TuClave-Segura1" -p 1433:1433 -v swot-sql-data:/var/opt/mssql --name swot-sql -d mcr.microsoft.com/mssql/server:2022-latest
 ```
 
 Crea la base de datos:
 
 ```bash
-docker exec sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "TuClave-Segura1" -C -Q "CREATE DATABASE swot_db"
+docker exec swot-sql /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "TuClave-Segura1" -C -Q "CREATE DATABASE swot_db"
 ```
 
 ### 3. Backend
@@ -115,6 +115,24 @@ Cubren login, permisos por rol, inyección SQL, RUT y patentes, conductores, pro
 2. Como conductor (en modo celular de las DevTools): iniciar la ruta y entregar con RUT y foto.
 3. Como supervisor: abrir el detalle de la OT (guía firmada e historial), el **OTIF** por mes y de todo el historial, y exportar a PDF.
 4. Como administrador: crear un cliente (el RUT se formatea solo), un conductor y un producto con foto.
+
+## Copias de seguridad
+
+Desde `backend`, con la base encendida:
+
+```bash
+npm run backup
+```
+
+Crea un respaldo completo y lo copia a `backend/backups/` (esa carpeta no se sube a Git). Si tu contenedor no se llama `swot-sql`, define `DB_CONTAINER` en el `.env`. Para restaurar uno:
+
+```bash
+docker cp backups/ARCHIVO.bak swot-sql:/var/opt/mssql/data/ARCHIVO.bak
+```
+
+```bash
+docker exec swot-sql /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "TuClave-Segura1" -C -Q "RESTORE DATABASE swot_db FROM DISK = '/var/opt/mssql/data/ARCHIVO.bak' WITH REPLACE"
+```
 
 ## Seguridad
 

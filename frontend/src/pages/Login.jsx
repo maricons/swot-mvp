@@ -1,5 +1,5 @@
 // src/pages/Login.jsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
@@ -15,12 +15,16 @@ const MIN_SPLASH_MS = 1200;
 function Login() {
     const [email, setEmail] = useState('despachador@swot.cl');
     const [password, setPassword] = useState(DEMO_PASSWORD);
-    const [error, setError] = useState('');
+    // The notice comes from the interceptor when a session expired or the account was deactivated
+    const [error, setError] = useState(() => sessionStorage.getItem('loginNotice') || '');
     const [loggingIn, setLoggingIn] = useState(false);
     const [flipped, setFlipped] = useState(false);
     const [resetEmail, setResetEmail] = useState('');
     const [resetSent, setResetSent] = useState(false);
     const navigate = useNavigate();
+
+    // Show the notice once: it is cleared after the first render
+    useEffect(() => sessionStorage.removeItem('loginNotice'), []);
 
     // Visual only: no email is sent yet
     const handleReset = (e) => {
