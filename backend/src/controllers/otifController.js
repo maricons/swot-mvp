@@ -8,10 +8,13 @@ const { sendTablePdf, formatDay } = require('../utils/pdf');
 const ON_TIME = "status = 'Delivered' AND CAST(delivered_at AS DATE) <= due_date";
 const IN_FULL = "status = 'Delivered' AND in_full = 1";
 
-// First day of the month each order belongs to
-const MONTH = 'DATEFROMPARTS(YEAR(due_date), MONTH(due_date), 1)';
-// month = one row per month; all = the whole history as a single total
-const GROUPINGS = ['month', 'all'];
+// First day of the period each order belongs to (1900-01-01 was a Monday, so the week starts on Monday)
+const PERIODS = {
+    month: 'DATEFROMPARTS(YEAR(due_date), MONTH(due_date), 1)',
+    week: "DATEADD(DAY, -(DATEDIFF(DAY, '19000101', due_date) % 7), due_date)",
+};
+// month / week = one row per period; all = the whole history as a single total
+const GROUPINGS = ['month', 'week', 'all'];
 
 const COUNTS = `COUNT(*) AS total,
     COALESCE(SUM(CASE WHEN ${ON_TIME} THEN 1 ELSE 0 END), 0) AS onTime,
@@ -27,7 +30,7 @@ const computeOtif = async (req, res) => {
     const driverId = req.query.driverId ? Number(req.query.driverId) : null;
     if ((from && !isDate(from)) || (to && !isDate(to)) || !GROUPINGS.includes(groupBy)
         || (customerId !== null && !isPositiveInt(customerId)) || (driverId !== null && !isPositiveInt(driverId))) {
-        res.status(400).json({ error: 'Parámetros no válidos (fechas AAAA-MM-DD, groupBy month o all, ids numéricos)' });
+        res.status(400).json({ error: 'Parámetros no válidos (fechas AAAA-MM-DD, groupBy month, week o all, ids numéricos)' });
         return null;
     }
 
@@ -53,17 +56,28 @@ const computeOtif = async (req, res) => {
         }
 
         const summary = await request.query(`SELECT ${COUNTS} FROM transport_order WHERE ${where}`);
-        // The monthly series is only needed when grouping by month
-        const series = groupBy === 'month' ? await request.query(
-            `SELECT CONVERT(VARCHAR(10), ${MONTH}, 23) AS period, ${COUNTS}
+        // The series is only needed when grouping by month or week
+        const period = PERIODS[groupBy];
+        const series = period ? await request.query(
+            `SELECT CONVERT(VARCHAR(10), ${period}, 23) AS period, ${COUNTS}
              FROM transport_order WHERE ${where}
-             GROUP BY ${MONTH} ORDER BY ${MONTH}`
+             GROUP BY ${period} ORDER BY ${period}`
         ) : { recordset: [] };
+        // Who delivers best: the same numbers per driver and per customer
+        const ranking = (join, label) => request.query(
+            `SELECT ${label} AS name, ${COUNTS.replace(/(status|due_date|delivered_at|in_full)/g, 'o.$1')}
+             FROM transport_order o ${join} WHERE ${where.replace(/(status|due_date|customer_id|driver_id)/g, 'o.$1')}
+             GROUP BY ${label} ORDER BY ${label}`
+        );
+        const [byDriver, byCustomer] = await Promise.all([
+            ranking('JOIN app_user x ON x.id = o.driver_id', 'x.name'),
+            ranking('JOIN customer x ON x.id = o.customer_id', 'x.name'),
+        ]);
         // The names of the filters, for the title of the PDF
         const names = await pool.request().input('customerId', sql.Int, customerId).input('driverId', sql.Int, driverId).query(
             `SELECT (SELECT name FROM customer WHERE id = @customerId) AS customerName, (SELECT name FROM app_user WHERE id = @driverId) AS driverName`
         );
-        return { summary: summary.recordset[0], series: series.recordset, groupBy, from, to, ...names.recordset[0] };
+        return { summary: summary.recordset[0], series: series.recordset, byDriver: byDriver.recordset, byCustomer: byCustomer.recordset, groupBy, from, to, ...names.recordset[0] };
     } catch (error) {
         internalError(res, error);
         return null;
@@ -72,7 +86,7 @@ const computeOtif = async (req, res) => {
 
 exports.getOtif = async (req, res) => {
     const result = await computeOtif(req, res);
-    if (result) res.json({ ...result.summary, series: result.series });
+    if (result) res.json({ ...result.summary, series: result.series, byDriver: result.byDriver, byCustomer: result.byCustomer });
 };
 
 const percent = (part, total) => (total ? `${Math.round((part / total) * 100)}%` : '—');
@@ -91,15 +105,15 @@ exports.exportPdf = async (req, res) => {
     sendTablePdf(res, {
         filename: `otif-${new Date().toISOString().slice(0, 10)}.pdf`,
         title: 'Indicador OTIF',
-        subtitle: `On Time In Full ${groupBy === 'month' ? 'por mes' : 'de todo el historial'} (según fecha comprometida)${filters ? `  ·  ${filters}` : ''}`,
+        subtitle: `On Time In Full ${{ month: 'por mes', week: 'por semana', all: 'de todo el historial' }[groupBy]} (según fecha comprometida)${filters ? `  ·  ${filters}` : ''}`,
         columns: [
-            { header: groupBy === 'month' ? 'Mes' : 'Período', key: 'period', width: 3 },
+            { header: { month: 'Mes', week: 'Semana desde el', all: 'Período' }[groupBy], key: 'period', width: 3 },
             { header: 'OT medidas', key: 'total', width: 2, align: 'right' },
             { header: 'A tiempo', key: 'onTime', width: 2, align: 'right' },
             { header: 'Completas', key: 'inFull', width: 2, align: 'right' },
             { header: 'OTIF', key: 'otif', width: 2, align: 'right' },
         ],
-        rows: groupBy === 'month'
+        rows: groupBy !== 'all'
             ? [...series.map((s) => row(formatDay(s.period), s)), row('TOTAL', summary)]
             : [row('Todo el historial', summary)],
     });

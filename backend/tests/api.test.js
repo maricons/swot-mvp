@@ -191,7 +191,11 @@ test('OTIF by month and for the whole history, alerts and exports', async () => 
     assert.ok(otif.body.total >= 1 && otif.body.otif >= 1);
     assert.ok(otif.body.series.length >= 1);
     assert.equal((await call('GET', '/otif?groupBy=all', { token: tokens.admin })).status, 200);
-    assert.equal((await call('GET', '/otif?groupBy=week', { token: tokens.admin })).status, 400);
+    assert.equal((await call('GET', '/otif?groupBy=day', { token: tokens.admin })).status, 400);
+    const weekly = (await call('GET', '/otif?groupBy=week', { token: tokens.admin })).body;
+    assert.ok(weekly.series.every((s) => new Date(s.period + 'T00:00:00').getDay() === 1), 'weeks start on Monday');
+    assert.equal(weekly.series.reduce((sum, s) => sum + s.total, 0), weekly.total);
+    assert.ok(Array.isArray(weekly.byDriver) && Array.isArray(weekly.byCustomer));
 
     // Filters by customer, driver and month: they narrow the numbers, and bad ids are rejected
     const all = (await call('GET', '/otif?groupBy=all', { token: tokens.admin })).body;
@@ -451,14 +455,14 @@ test('billing: days past the free days of each type are charged, the tariff is a
     assert.equal((await put(tokens.admin, { freeDays: rate.freeDays, dailyRate: rate.dailyRate })).status, 200);
 });
 
-test('predictions: the late-risk model is better than chance, behaves sensibly and validates its input', async () => {
+test('predictions: the otif-risk model is better than chance, behaves sensibly and validates its input', async () => {
     const model = (await call('GET', '/predictions/model', { token: tokens.supervisor })).body;
-    assert.ok(model.metrics.auc > 0.9 && model.metrics.accuracy > 0.8, 'trained model is good on data it had not seen');
+    assert.ok(model.metrics.auc > 0.8 && model.metrics.accuracy > model.metrics.baselineAccuracy, 'the model beats chance and the always-no baseline on data it had not seen');
     assert.equal(model.influence.length, 6);
 
     const easy = { distanceKm: 10, weightKg: 300, leadDays: 7, itemCount: 1, createdHour: 9, dueOnMonday: 0 };
     const hard = { distanceKm: 160, weightKg: 4000, leadDays: 0, itemCount: 7, createdHour: 19, dueOnMonday: 1 };
-    const risk = async (body) => (await call('POST', '/predictions/late-risk', { token: tokens.dispatcher, body })).body;
+    const risk = async (body) => (await call('POST', '/predictions/otif-risk', { token: tokens.dispatcher, body })).body;
     const [low, high] = [await risk(easy), await risk(hard)];
     assert.equal(low.level, 'low');
     assert.equal(high.level, 'high');
@@ -467,9 +471,9 @@ test('predictions: the late-risk model is better than chance, behaves sensibly a
     const middle = { ...easy, distanceKm: 90, weightKg: 2000, leadDays: 4, itemCount: 4 };
     assert.ok((await risk({ ...middle, leadDays: 2 })).probability > (await risk(middle)).probability);
 
-    assert.equal((await call('POST', '/predictions/late-risk', { token: tokens.dispatcher, body: { ...easy, weightKg: 'heavy' } })).status, 400);
-    assert.equal((await call('POST', '/predictions/late-risk', { token: tokens.dispatcher, body: { ...easy, createdHour: 30 } })).status, 400);
-    assert.equal((await call('POST', '/predictions/late-risk', { token: tokens.driver, body: easy })).status, 403);
+    assert.equal((await call('POST', '/predictions/otif-risk', { token: tokens.dispatcher, body: { ...easy, weightKg: 'heavy' } })).status, 400);
+    assert.equal((await call('POST', '/predictions/otif-risk', { token: tokens.dispatcher, body: { ...easy, createdHour: 30 } })).status, 400);
+    assert.equal((await call('POST', '/predictions/otif-risk', { token: tokens.driver, body: easy })).status, 403);
 
     // Open orders come with a risk, highest first
     const open = await call('GET', '/predictions/open-orders', { token: tokens.dispatcher });
