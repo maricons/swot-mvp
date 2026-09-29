@@ -633,3 +633,14 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
   .container-grid { grid-template-columns: 1fr; }
 }
 @keyframes sheet { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Predictions */
+.influence { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.influence li { display: grid; grid-template-columns: 150px 1fr 100px; gap: 10px; align-items: center; font-size: 14px; }
+.influence-bar { background: #f1ece0; border-radius: 6px; height: 10px; overflow: hidden; }
+.influence-bar span { display: block; height: 100%; border-radius: 6px; }
+.inf-up { background: #ee9f9f; }
+.inf-down { background: #9fd6b4; }
+.whatif { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.whatif-result { margin-top: 16px; font-size: 18px; }
+@media (max-width: 600px) { .influence li { grid-template-columns: 1fr; gap: 4px; } }

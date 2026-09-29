@@ -450,3 +450,31 @@ test('billing: days past the free days of each type are charged, the tariff is a
     assert.equal((await put(tokens.admin, rate, '99XX')).status, 404);
     assert.equal((await put(tokens.admin, { freeDays: rate.freeDays, dailyRate: rate.dailyRate })).status, 200);
 });
+
+test('predictions: the late-risk model is better than chance, behaves sensibly and validates its input', async () => {
+    const model = (await call('GET', '/predictions/model', { token: tokens.supervisor })).body;
+    assert.ok(model.metrics.auc > 0.9 && model.metrics.accuracy > 0.8, 'trained model is good on data it had not seen');
+    assert.equal(model.influence.length, 6);
+
+    const easy = { distanceKm: 10, weightKg: 300, leadDays: 7, itemCount: 1, createdHour: 9, dueOnMonday: 0 };
+    const hard = { distanceKm: 160, weightKg: 4000, leadDays: 0, itemCount: 7, createdHour: 19, dueOnMonday: 1 };
+    const risk = async (body) => (await call('POST', '/predictions/late-risk', { token: tokens.dispatcher, body })).body;
+    const [low, high] = [await risk(easy), await risk(hard)];
+    assert.equal(low.level, 'low');
+    assert.equal(high.level, 'high');
+    assert.ok(high.probability > low.probability);
+    // Less time to deliver never lowers the risk
+    const middle = { ...easy, distanceKm: 90, weightKg: 2000, leadDays: 4, itemCount: 4 };
+    assert.ok((await risk({ ...middle, leadDays: 2 })).probability > (await risk(middle)).probability);
+
+    assert.equal((await call('POST', '/predictions/late-risk', { token: tokens.dispatcher, body: { ...easy, weightKg: 'heavy' } })).status, 400);
+    assert.equal((await call('POST', '/predictions/late-risk', { token: tokens.dispatcher, body: { ...easy, createdHour: 30 } })).status, 400);
+    assert.equal((await call('POST', '/predictions/late-risk', { token: tokens.driver, body: easy })).status, 403);
+
+    // Open orders come with a risk, highest first
+    const open = await call('GET', '/predictions/open-orders', { token: tokens.dispatcher });
+    assert.equal(open.status, 200);
+    open.body.forEach((o) => assert.ok(o.probability >= 0 && o.probability <= 1 && ['low', 'medium', 'high'].includes(o.level)));
+    assert.deepEqual(open.body.map((o) => o.probability), open.body.map((o) => o.probability).sort((a, b) => b - a));
+    assert.equal((await call('GET', '/predictions/open-orders', { token: tokens.yard })).status, 403);
+});

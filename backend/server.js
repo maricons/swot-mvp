@@ -14,6 +14,7 @@ const alertController = require('./src/controllers/alertController');
 const containerController = require('./src/controllers/containerController');
 const fleetController = require('./src/controllers/fleetController');
 const billingController = require('./src/controllers/billingController');
+const predictionController = require('./src/controllers/predictionController');
 const auth = require('./src/middlewares/auth');
 const role = require('./src/middlewares/role');
 
@@ -119,6 +120,11 @@ app.get('/api/billing/export/excel', auth, role(MANAGEMENT), billingController.e
 app.get('/api/billing/export/pdf', auth, role(MANAGEMENT), billingController.exportPdf);
 app.get('/api/storage-rates', auth, role(YARD_READ), billingController.getRates);
 app.put('/api/storage-rates/:type', auth, role(ADMIN), billingController.updateRate);
+
+// Late-delivery risk model (trained on simulated orders, see backend/ml)
+app.get('/api/predictions/model', auth, role(READ), predictionController.getModel);
+app.get('/api/predictions/open-orders', auth, role(READ), predictionController.openOrders);
+app.post('/api/predictions/late-risk', auth, role(READ), predictionController.lateRisk);
 
 // OTIF indicator and alerts
 app.get('/api/otif', auth, role(MANAGEMENT), otifController.getOtif);

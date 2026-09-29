@@ -11,6 +11,7 @@ import Otif from './pages/Otif';
 import Containers from './pages/Containers';
 import Fleet from './pages/Fleet';
 import Billing from './pages/Billing';
+import Predictions from './pages/Predictions';
 import ResetPassword from './pages/ResetPassword';
 import { homeRoute } from './utils/format';
 import { ToastProvider } from './components/Toast';
@@ -39,6 +40,7 @@ const ROUTES = {
     '/otif': [MANAGEMENT, Otif],
     '/containers': [['yard', ...MANAGEMENT], Containers],
     '/billing': [MANAGEMENT, Billing],
+    '/predictions': [['dispatcher', ...MANAGEMENT], Predictions],
     '/route': [['driver'], DriverRoute],
 };
 
