@@ -8,6 +8,8 @@ import Vehicles from './pages/Vehicles';
 import Drivers from './pages/Drivers';
 import Products from './pages/Products';
 import Otif from './pages/Otif';
+import Containers from './pages/Containers';
+import { homeRoute } from './utils/format';
 import { ToastProvider } from './components/Toast';
 
 // Without a token it goes to the login; a role without access to the screen goes to its own home
@@ -16,7 +18,7 @@ const ProtectedRoute = ({ roles, children }) => {
     const role = localStorage.getItem('role');
     if (!token) return <Navigate to="/" />;
     if (!roles.includes(role)) {
-        return <Navigate to={role === 'driver' ? '/route' : '/orders'} />;
+        return <Navigate to={homeRoute(role)} />;
     }
     return children;
 };
@@ -31,6 +33,7 @@ const ROUTES = {
     '/drivers': [MANAGEMENT, Drivers],
     '/products': [MANAGEMENT, Products],
     '/otif': [MANAGEMENT, Otif],
+    '/containers': [['yard', ...MANAGEMENT], Containers],
     '/route': [['driver'], DriverRoute],
 };
 

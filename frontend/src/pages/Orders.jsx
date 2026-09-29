@@ -22,6 +22,9 @@ const STATUS_COLORS = {
 
 const EMPTY_FILTERS = { status: '', from: '', to: '' };
 
+// Past its promised date and still open
+const isLate = (order) => order.dueDate && order.dueDate < new Date().toLocaleDateString('en-CA') && !['Delivered', 'Failed'].includes(order.status);
+
 function Orders() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -125,18 +128,18 @@ function Orders() {
                             <thead>
                                 <tr>
                                     <th>OT</th>
-                                    <th>Cliente</th>
-                                    <th>Peso</th>
                                     <th>Estado</th>
-                                    <th>Creada</th>
+                                    <th>Cliente</th>
+                                    <th className="num">Peso</th>
                                     <th>Compromiso</th>
+                                    <th>Creada</th>
                                     <th></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {loading && [1, 2, 3, 4, 5].map((n) => (
                                     <tr key={`sk-${n}`}>
-                                        {[36, 130, 70, 90, 80, 80, 110].map((w, i) => (
+                                        {[36, 90, 130, 70, 80, 80, 110].map((w, i) => (
                                             <td key={i}><span className="skeleton sk-line" style={{ width: w }} /></td>
                                         ))}
                                     </tr>
@@ -144,11 +147,11 @@ function Orders() {
                                 {!loading && orders.map((order, i) => (
                                     <tr key={order.id} className="row-in" style={{ animationDelay: `${Math.min(i, 12) * 55}ms` }}>
                                         <td className="id-cell">#{order.id}</td>
+                                        <td><StatusBadge status={order.status} /></td>
                                         <td>{order.customerName}</td>
                                         <td className="num">{Number(order.weightKg).toLocaleString('es-CL')} kg</td>
-                                        <td><StatusBadge status={order.status} /></td>
+                                        <td className={isLate(order) ? 'text-late' : ''}>{formatDay(order.dueDate)}</td>
                                         <td>{formatDate(order.createdAt)}</td>
-                                        <td>{formatDay(order.dueDate)}</td>
                                         <td className="actions">
                                             {canOperate && order.status === 'Created' && (
                                                 <button className="btn btn-primary btn-sm" onClick={() => setToSchedule(order)}>Programar</button>

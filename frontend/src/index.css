@@ -388,13 +388,6 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .donut-centro { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
 .donut-num { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
 .donut-etq { font-size: 11px; color: var(--muted); margin-top: 3px; font-weight: 600; }
-.donut-leyenda { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
-.donut-leyenda li { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 6px; border-radius: 8px; cursor: default; }
-.leyenda-activa { background: var(--primary-soft); }
-.leyenda-punto { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
-.leyenda-nombre { flex: 1; min-width: 0; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.leyenda-valor { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.leyenda-valor small { color: var(--muted); font-weight: 600; }
 .sk-donut { width: 150px; height: 150px; border-radius: 50%; margin: 10px auto; }
 /* ===== Navegación y encabezados de página ===== */
 .nav { display: flex; gap: 4px; flex: 1; margin-left: 24px; }
@@ -534,15 +527,47 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 
 /* ===== Responsive charts ===== */
 /* The donut adapts to the width of its own card, not to the screen */
-@container (max-width: 300px) {
+@container (max-width: 390px) {
   .donut-body { flex-direction: column; align-items: stretch; gap: 14px; }
   .donut-wrap { width: min(170px, 65%); margin: 0 auto; }
 }
 @container (min-width: 520px) {
   .donut-wrap { width: 190px; }
-  .donut-leyenda li { font-size: 14px; }
+  .legend { font-size: 14px; }
 }
 /* When the screen is not wide enough for tiles + chart side by side, the chart takes the full row */
 @media (max-width: 1000px) {
   .overview { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ===== Chart legend as a small table: name on the left, number and percent aligned on the right ===== */
+.legend { flex: 1; min-width: 0; width: 100%; border-collapse: collapse; font-size: 13px; }
+.legend th { text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); padding: 0 8px 6px; border-bottom: 1px solid var(--border); }
+.legend td { padding: 7px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.legend th.num, .legend td.num { text-align: right; width: 1%; font-variant-numeric: tabular-nums; }
+.legend tbody tr:last-child td { border-bottom-color: transparent; }
+.legend tbody tr { cursor: default; transition: background 0.15s; }
+.legend tbody tr:hover, .legend-active { background: var(--primary-soft); }
+.legend tfoot td { font-weight: 800; border-top: 1px solid var(--border); border-bottom: none; padding-top: 8px; }
+.legend-percent { color: var(--muted); font-weight: 600; min-width: 44px; }
+.legend tfoot .legend-percent { font-weight: 700; }
+.legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; }
+
+/* ===== Containers ===== */
+.mono { font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 13px; letter-spacing: 0.02em; }
+.text-late { color: var(--danger); font-weight: 700; }
+.cargo { font-size: 13px; font-weight: 600; color: var(--muted); }
+.cargo-cold { color: #2a7d90; }
+
+/* ===== Service switch (transport / storage) ===== */
+.service-switch { display: inline-flex; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 3px; gap: 2px; }
+.service-switch button { border: none; background: none; font: inherit; font-size: 13px; font-weight: 700; color: var(--muted); padding: 7px 14px; border-radius: 9px; cursor: pointer; white-space: nowrap; transition: background 0.15s, color 0.15s; }
+.service-switch button:hover { color: var(--primary); }
+.service-switch .service-on { background: var(--surface); color: var(--primary); box-shadow: 0 1px 3px rgba(17, 76, 95, 0.15); }
+.nav-service { display: none; }
+@media (max-width: 800px) {
+  .topbar-service { display: none; }
+  .nav-service { display: block; padding: 4px 14px 10px; }
+  .nav-service .service-switch { width: 100%; }
+  .nav-service .service-switch button { flex: 1; }
 }

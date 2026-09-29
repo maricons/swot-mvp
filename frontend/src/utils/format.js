@@ -6,8 +6,25 @@ export const STATUS_PLURALS = {
     Created: 'Creadas', Scheduled: 'Programadas', InTransit: 'En ruta', Delivered: 'Entregadas', Failed: 'Fallidas',
 };
 export const ROLE_LABELS = {
-    dispatcher: 'Despachador', driver: 'Conductor', admin: 'Administrador', supervisor: 'Supervisor',
+    dispatcher: 'Despachador', driver: 'Conductor', admin: 'Administrador', supervisor: 'Supervisor', yard: 'Operador de patio',
 };
+
+// The screen each role lands on after logging in
+export const homeRoute = (role) => ({ driver: '/route', yard: '/containers' })[role] || '/orders';
+
+// Container storage service
+export const CONTAINER_STATUS_LABELS = { Expected: 'Esperado', InYard: 'En patio', Departed: 'Retirado' };
+export const CARGO_LABELS = { dry: 'Seca', perishable: 'Perecedera' };
+export const CONTAINER_TYPES = [
+    ['20DV', "20' estándar"], ['40DV', "40' estándar"], ['40HC', "40' High Cube"], ['20RF', "20' refrigerado"], ['40RF', "40' refrigerado"],
+];
+export const EVENT_LABELS = { Announced: 'Anunciado', Arrived: 'Llegó al patio', Moved: 'Movido de posición', Departed: 'Salió del patio' };
+
+// "MSCU1234566" -> "MSCU 123456-6"
+export const formatContainerNumber = (number) => (number ? `${number.slice(0, 4)} ${number.slice(4, 10)}-${number.slice(10)}` : '');
+
+// Formats as the user types: keeps letters and digits, upper case, up to 11 characters
+export const formatContainerInput = (value) => formatContainerNumber(value.replace(/[^0-9a-zA-Z]/g, '').toUpperCase().slice(0, 11)).replace(/[ -]+$/, '');
 
 // "2027-12-31" -> "31-12-2027" (dates without time come as text from the API, so no time zone can shift them)
 export const formatDay = (day) => (day ? day.split('-').reverse().join('-') : '—');
