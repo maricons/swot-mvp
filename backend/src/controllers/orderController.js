@@ -358,7 +358,7 @@ exports.myRoute = async (req, res) => {
         const pool = await poolPromise;
         const result = await pool.request()
             .input('driver_id', sql.Int, req.user.id)
-            .query(`SELECT ${ORDER_COLUMNS}, c.address AS customerAddress, v.plate
+            .query(`SELECT ${ORDER_COLUMNS}, c.address AS customerAddress, c.latitude AS customerLatitude, c.longitude AS customerLongitude, v.plate
                     FROM transport_order o
                     JOIN customer c ON c.id = o.customer_id
                     LEFT JOIN vehicle v ON v.id = o.vehicle_id

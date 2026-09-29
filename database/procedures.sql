@@ -90,6 +90,96 @@ BEGIN
     INSERT INTO order_history (order_id, previous_status, new_status, user_id)
     VALUES (@order_id, @previous_status, @new_status, @user_id);
 
+    -- The truck stops being tracked when its driver has no other order in transit
+    IF @new_status IN ('Delivered', 'Failed')
+        DELETE FROM truck_position
+        WHERE driver_id = (SELECT driver_id FROM transport_order WHERE id = @order_id)
+          AND NOT EXISTS (SELECT 1 FROM transport_order WHERE driver_id = truck_position.driver_id AND status = 'InTransit');
+
+    COMMIT;
+END;
+GO
+
+-- 4. Save the last known position of a driver's truck
+CREATE OR ALTER PROCEDURE sp_save_truck_position
+    @driver_id INT,
+    @latitude DECIMAL(9,6),
+    @longitude DECIMAL(9,6)
+AS
+BEGIN
+    SET XACT_ABORT ON;
+    BEGIN TRAN;
+
+    UPDATE truck_position SET latitude = @latitude, longitude = @longitude, recorded_at = GETDATE()
+    WHERE driver_id = @driver_id;
+
+    IF @@ROWCOUNT = 0
+        INSERT INTO truck_position (driver_id, latitude, longitude) VALUES (@driver_id, @latitude, @longitude);
+
+    COMMIT;
+END;
+GO
+
+-- 5. Announce a container (creates it as Expected and records the first event)
+CREATE OR ALTER PROCEDURE sp_create_container
+    @container_number VARCHAR(11),
+    @customer_id INT,
+    @container_type VARCHAR(4),
+    @cargo_type VARCHAR(10),
+    @temperature_c DECIMAL(4,1) = NULL,
+    @seal_number VARCHAR(20) = NULL,
+    @expected_arrival DATE = NULL,
+    @planned_departure DATE = NULL,
+    @notes VARCHAR(255) = NULL,
+    @user_id INT
+AS
+BEGIN
+    SET XACT_ABORT ON;
+    DECLARE @container_id INT;
+
+    BEGIN TRAN;
+
+    INSERT INTO container (container_number, customer_id, container_type, cargo_type, temperature_c, seal_number,
+                           expected_arrival, planned_departure, notes)
+    VALUES (@container_number, @customer_id, @container_type, @cargo_type, @temperature_c, @seal_number,
+            @expected_arrival, @planned_departure, @notes);
+
+    SET @container_id = SCOPE_IDENTITY();
+
+    INSERT INTO container_event (container_id, event_type, user_id) VALUES (@container_id, 'Announced', @user_id);
+
+    COMMIT;
+
+    SELECT @container_id AS container_id;
+END;
+GO
+
+-- 6. Arrival, move inside the yard, or departure of a container (the API checks the allowed transitions)
+CREATE OR ALTER PROCEDURE sp_register_container_event
+    @container_id INT,
+    @event_type VARCHAR(10),
+    @yard_location VARCHAR(20) = NULL,
+    @seal_number VARCHAR(20) = NULL,
+    @notes VARCHAR(255) = NULL,
+    @user_id INT
+AS
+BEGIN
+    SET XACT_ABORT ON;
+    BEGIN TRAN;
+
+    IF @event_type = 'Arrived'
+        UPDATE container
+        SET status = 'InYard', arrived_at = GETDATE(), yard_location = @yard_location,
+            seal_number = COALESCE(@seal_number, seal_number)
+        WHERE id = @container_id;
+    ELSE IF @event_type = 'Moved'
+        UPDATE container SET yard_location = @yard_location WHERE id = @container_id;
+    ELSE IF @event_type = 'Departed'
+        UPDATE container SET status = 'Departed', departed_at = GETDATE(), yard_location = NULL WHERE id = @container_id;
+
+    INSERT INTO container_event (container_id, event_type, yard_location, notes, user_id)
+    VALUES (@container_id, @event_type, @yard_location, @notes, @user_id);
+
     COMMIT;
 END;
 GO

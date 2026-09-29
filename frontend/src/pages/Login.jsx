@@ -2,12 +2,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { homeRoute } from '../utils/format';
 
 const DEMO_PASSWORD = 'hash_simulado_123';
 const DEMO_ACCOUNTS = [
     ['Despachador', 'despachador@swot.cl'],
     ['Conductor', 'conductor@swot.cl'],
     ['Supervisor', 'supervisor@swot.cl'],
+    ['Patio', 'patio@swot.cl'],
     ['Admin', 'admin@swot.cl'],
 ];
 const MIN_SPLASH_MS = 1200;
@@ -48,7 +50,7 @@ function Login() {
             localStorage.setItem('token', data.token);
             localStorage.setItem('role', data.role);
             // The loading screen stays at least MIN_SPLASH_MS in total, even if the API answers fast
-            setTimeout(() => navigate(data.role === 'driver' ? '/route' : '/orders'), Math.max(0, MIN_SPLASH_MS - (Date.now() - startedAt)));
+            setTimeout(() => navigate(homeRoute(data.role)), Math.max(0, MIN_SPLASH_MS - (Date.now() - startedAt)));
         } catch (err) {
             // On failure it goes back to the form with the error message
             setError(err.response?.data?.error || 'No se pudo conectar con el servidor');

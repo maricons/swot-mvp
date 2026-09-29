@@ -54,23 +54,28 @@ function DonutChart({ title, data, loading, totalLabel = 'en total' }) {
                         </div>
                     </div>
 
-                    <ul className="donut-leyenda">
-                        {data.map((d) => (
-                            <li
-                                key={d.label}
-                                className={active === d.label ? 'leyenda-activa' : ''}
-                                onMouseEnter={() => setActive(d.label)}
-                                onMouseLeave={() => setActive(null)}
-                            >
-                                <span className="leyenda-punto" style={{ background: d.color }} />
-                                <span className="leyenda-nombre">{d.label}</span>
-                                <span className="leyenda-valor">
-                                    {d.count}
-                                    {total > 0 && <small> · {Math.round((d.count / total) * 100)}%</small>}
-                                </span>
-                            </li>
-                        ))}
-                    </ul>
+                    <table className="legend">
+                        <thead>
+                            <tr><th>Estado</th><th className="num">N.º</th><th className="num">%</th></tr>
+                        </thead>
+                        <tbody>
+                            {data.map((d) => (
+                                <tr
+                                    key={d.label}
+                                    className={active === d.label ? 'legend-active' : ''}
+                                    onMouseEnter={() => setActive(d.label)}
+                                    onMouseLeave={() => setActive(null)}
+                                >
+                                    <td><span className="legend-dot" style={{ background: d.color }} />{d.label}</td>
+                                    <td className="num">{d.count}</td>
+                                    <td className="num legend-percent">{total > 0 ? `${Math.round((d.count / total) * 100)}%` : '—'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                        <tfoot>
+                            <tr><td>Total</td><td className="num">{total}</td><td className="num legend-percent">{total > 0 ? '100%' : '—'}</td></tr>
+                        </tfoot>
+                    </table>
                 </div>
             )}
         </section>

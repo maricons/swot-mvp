@@ -11,6 +11,8 @@ const driverController = require('./src/controllers/driverController');
 const productController = require('./src/controllers/productController');
 const otifController = require('./src/controllers/otifController');
 const alertController = require('./src/controllers/alertController');
+const containerController = require('./src/controllers/containerController');
+const fleetController = require('./src/controllers/fleetController');
 const auth = require('./src/middlewares/auth');
 const role = require('./src/middlewares/role');
 
@@ -58,6 +60,9 @@ app.post('/api/auth/login', loginLimiter, authController.login);
 const ADMIN = ['admin'];
 const READ = ['dispatcher', 'supervisor', 'admin']; // everyone but drivers
 const MANAGEMENT = ['supervisor', 'admin'];
+// Container storage service: the yard operator works it, the admin manages it, the supervisor watches it
+const YARD_READ = ['yard', 'supervisor', 'admin'];
+const YARD_WRITE = ['yard', 'admin'];
 
 // Orders. Export routes go before /:id so "export" is not read as an id
 app.get('/api/orders', auth, role(READ), orderController.list);
@@ -68,6 +73,9 @@ app.get('/api/orders/:id', auth, role([...READ, 'driver']), orderController.getD
 app.patch('/api/orders/:id/schedule', auth, role(['dispatcher']), orderController.schedule);
 app.patch('/api/orders/:id/status', auth, role(['driver']), orderController.changeStatus);
 app.get('/api/my-route', auth, role(['driver']), orderController.myRoute);
+app.post('/api/my-route/position', auth, role(['driver']), fleetController.savePosition);
+// Where the trucks in transit are (last position reported by each driver's phone)
+app.get('/api/fleet', auth, role(MANAGEMENT), fleetController.getFleet);
 
 // Customers, vehicles, drivers and products: everyone but drivers reads; only the admin writes
 [
@@ -76,16 +84,27 @@ app.get('/api/my-route', auth, role(['driver']), orderController.myRoute);
     ['drivers', driverController],
     ['products', productController],
 ].forEach(([path, controller]) => {
-    app.get(`/api/${path}`, auth, role(READ), controller.list);
+    // The yard operator also needs the customer list to register containers
+    app.get(`/api/${path}`, auth, role(path === 'customers' ? [...READ, 'yard'] : READ), controller.list);
     app.post(`/api/${path}`, auth, role(ADMIN), controller.create);
     app.put(`/api/${path}/:id`, auth, role(ADMIN), controller.update);
     app.patch(`/api/${path}/:id/active`, auth, role(ADMIN), controller.setActive);
 });
 
+// Containers. summary goes before /:id so "summary" is not read as an id
+app.get('/api/containers', auth, role(YARD_READ), containerController.list);
+app.get('/api/containers/summary', auth, role(YARD_READ), containerController.summary);
+app.post('/api/containers', auth, role(YARD_WRITE), containerController.create);
+app.get('/api/containers/:id', auth, role(YARD_READ), containerController.getDetail);
+app.put('/api/containers/:id', auth, role(YARD_WRITE), containerController.update);
+app.post('/api/containers/:id/arrive', auth, role(YARD_WRITE), containerController.arrive);
+app.post('/api/containers/:id/move', auth, role(YARD_WRITE), containerController.move);
+app.post('/api/containers/:id/depart', auth, role(YARD_WRITE), containerController.depart);
+
 // OTIF indicator and alerts
 app.get('/api/otif', auth, role(MANAGEMENT), otifController.getOtif);
 app.get('/api/otif/export/pdf', auth, role(MANAGEMENT), otifController.exportPdf);
-app.get('/api/alerts', auth, role(READ), alertController.getAlerts);
+app.get('/api/alerts', auth, role([...READ, 'yard']), alertController.getAlerts);
 
 // Unknown route
 app.use((req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));

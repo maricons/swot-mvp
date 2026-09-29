@@ -1,11 +1,13 @@
 // src/components/FormModal.jsx
 import { useState } from 'react';
 import PhotoInput from './PhotoInput';
+import PointPicker from './PointPicker';
 
 // Generic create/edit modal. fields = [{ name, label, type, hint, format, options, ...inputProps }];
-// type "select" takes options = [{ value, label }], type "photo" stores a data URL.
+// type "select" takes options = [{ value, label }] (or a function of the form values), type "photo" stores a data URL, type "point" stores { latitude, longitude } picked on a map.
+// showIf(form) hides a field, normalize(form) fixes dependent values after every change.
 // submit(values) performs the API call and rejects on failure.
-function FormModal({ title, fields, initial, submit, message, onClose, onSaved }) {
+function FormModal({ title, fields, initial, submit, message, submitText = 'Guardar', normalize, onClose, onSaved }) {
     const [form, setForm] = useState(initial);
     const [error, setError] = useState('');
     const [sending, setSending] = useState(false);
@@ -24,12 +26,13 @@ function FormModal({ title, fields, initial, submit, message, onClose, onSaved }
     };
 
     const renderInput = ({ name, format, options, type, ...inputProps }) => {
-        const set = (value) => setForm({ ...form, [name]: value });
+        const set = (value) => setForm(normalize ? normalize({ ...form, [name]: value }) : { ...form, [name]: value });
         if (type === 'photo') return <PhotoInput value={form[name]} onChange={set} />;
+        if (type === 'point') return <PointPicker value={form[name]} onChange={set} />;
         if (type === 'select') {
             return (
                 <select className="input" value={form[name]} onChange={(e) => set(e.target.value)} {...inputProps}>
-                    {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    {(typeof options === 'function' ? options(form) : options).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
             );
         }
@@ -48,7 +51,7 @@ function FormModal({ title, fields, initial, submit, message, onClose, onSaved }
                 </div>
 
                 <div className="modal-body">
-                    {fields.map(({ label, hint, ...input }) => (
+                    {fields.filter((f) => !f.showIf || f.showIf(form)).map(({ label, hint, showIf: _showIf, ...input }) => (
                         <div className="field" key={input.name}>
                             <label>{label}</label>
                             {renderInput(input)}
@@ -61,7 +64,7 @@ function FormModal({ title, fields, initial, submit, message, onClose, onSaved }
                 <div className="modal-foot">
                     <button type="button" className="btn" onClick={onClose}>Cancelar</button>
                     <button type="submit" className="btn btn-primary" disabled={sending}>
-                        {sending ? 'Guardando…' : 'Guardar'}
+                        {sending ? 'Guardando…' : submitText}
                     </button>
                 </div>
             </form>
