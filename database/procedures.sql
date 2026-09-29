@@ -1,65 +1,95 @@
 USE swot_db;
 GO
 
--- 1. Procedimiento para CREAR OT
-CREATE OR ALTER PROCEDURE sp_crear_ot
-    @cliente_id INT,
-    @peso_kg DECIMAL(10,2),
-    @usuario_id INT
+-- 1. Create an order together with its product lines (all or nothing)
+-- @items is a JSON array: [{"product_id": 1, "quantity": 5}, ...]
+CREATE OR ALTER PROCEDURE sp_create_order
+    @customer_id INT,
+    @weight_kg DECIMAL(10,2),
+    @user_id INT,
+    @due_date DATE = NULL,
+    @items NVARCHAR(MAX) = NULL
 AS
 BEGIN
-    DECLARE @ot_id INT;
-    
-    INSERT INTO orden_transporte (cliente_id, peso_kg, estado)
-    VALUES (@cliente_id, @peso_kg, 'Creada');
-    
-    SET @ot_id = SCOPE_IDENTITY();
-    
-    INSERT INTO ot_historial (ot_id, estado_anterior, estado_nuevo, usuario_id)
-    VALUES (@ot_id, NULL, 'Creada', @usuario_id);
-    
-    -- Devuelve la ID de la OT recién creada
-    SELECT @ot_id AS id_ot_nueva;
+    SET XACT_ABORT ON;
+    DECLARE @order_id INT;
+
+    BEGIN TRAN;
+
+    INSERT INTO transport_order (customer_id, weight_kg, status, due_date)
+    VALUES (@customer_id, @weight_kg, 'Created', @due_date);
+
+    SET @order_id = SCOPE_IDENTITY();
+
+    INSERT INTO order_history (order_id, previous_status, new_status, user_id)
+    VALUES (@order_id, NULL, 'Created', @user_id);
+
+    IF @items IS NOT NULL
+        INSERT INTO order_item (order_id, product_id, quantity)
+        SELECT @order_id, product_id, quantity
+        FROM OPENJSON(@items) WITH (product_id INT '$.product_id', quantity INT '$.quantity');
+
+    COMMIT;
+
+    SELECT @order_id AS order_id;
 END;
 GO
 
--- 2. Procedimiento para PROGRAMAR OT
-CREATE OR ALTER PROCEDURE sp_programar_ot
-    @ot_id INT,
-    @vehiculo_id INT,
-    @conductor_id INT,
-    @usuario_id INT
+-- 2. Schedule an order: assign vehicle and driver
+CREATE OR ALTER PROCEDURE sp_schedule_order
+    @order_id INT,
+    @vehicle_id INT,
+    @driver_id INT,
+    @user_id INT
 AS
 BEGIN
-    DECLARE @estado_actual VARCHAR(20);
-    SELECT @estado_actual = estado FROM orden_transporte WHERE id = @ot_id;
+    SET XACT_ABORT ON;
+    DECLARE @previous_status VARCHAR(20);
 
-    UPDATE orden_transporte
-    SET vehiculo_id = @vehiculo_id,
-        usuario_conductor_id = @conductor_id,
-        estado = 'Programada'
-    WHERE id = @ot_id;
+    BEGIN TRAN;
 
-    INSERT INTO ot_historial (ot_id, estado_anterior, estado_nuevo, usuario_id)
-    VALUES (@ot_id, @estado_actual, 'Programada', @usuario_id);
+    SELECT @previous_status = status FROM transport_order WHERE id = @order_id;
+
+    UPDATE transport_order
+    SET vehicle_id = @vehicle_id, driver_id = @driver_id, status = 'Scheduled'
+    WHERE id = @order_id;
+
+    INSERT INTO order_history (order_id, previous_status, new_status, user_id)
+    VALUES (@order_id, @previous_status, 'Scheduled', @user_id);
+
+    COMMIT;
 END;
 GO
 
--- 3. Procedimiento para CAMBIAR ESTADO
-CREATE OR ALTER PROCEDURE sp_cambiar_estado_ot
-    @ot_id INT,
-    @nuevo_estado VARCHAR(20),
-    @usuario_id INT
+-- 3. Change the status. On delivery it stores the moment, whether it was complete (OTIF)
+-- and the proof of delivery (receiver RUT + photo of the signed guide)
+CREATE OR ALTER PROCEDURE sp_change_order_status
+    @order_id INT,
+    @new_status VARCHAR(20),
+    @user_id INT,
+    @in_full BIT = NULL,
+    @receiver_tax_id VARCHAR(20) = NULL,
+    @delivery_photo VARCHAR(MAX) = NULL
 AS
 BEGIN
-    DECLARE @estado_actual VARCHAR(20);
-    SELECT @estado_actual = estado FROM orden_transporte WHERE id = @ot_id;
+    SET XACT_ABORT ON;
+    DECLARE @previous_status VARCHAR(20);
 
-    UPDATE orden_transporte
-    SET estado = @nuevo_estado
-    WHERE id = @ot_id;
+    BEGIN TRAN;
 
-    INSERT INTO ot_historial (ot_id, estado_anterior, estado_nuevo, usuario_id)
-    VALUES (@ot_id, @estado_actual, @nuevo_estado, @usuario_id);
+    SELECT @previous_status = status FROM transport_order WHERE id = @order_id;
+
+    UPDATE transport_order
+    SET status = @new_status,
+        delivered_at = CASE WHEN @new_status = 'Delivered' THEN GETDATE() ELSE delivered_at END,
+        in_full = CASE WHEN @new_status = 'Delivered' THEN ISNULL(@in_full, 1) ELSE in_full END,
+        receiver_tax_id = CASE WHEN @new_status = 'Delivered' THEN @receiver_tax_id ELSE receiver_tax_id END,
+        delivery_photo = CASE WHEN @new_status = 'Delivered' THEN @delivery_photo ELSE delivery_photo END
+    WHERE id = @order_id;
+
+    INSERT INTO order_history (order_id, previous_status, new_status, user_id)
+    VALUES (@order_id, @previous_status, @new_status, @user_id);
+
+    COMMIT;
 END;
 GO

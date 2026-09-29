@@ -1,19 +1,37 @@
 // src/App.jsx
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Conductor from './pages/Conductor';
+import Orders from './pages/Orders';
+import DriverRoute from './pages/DriverRoute';
+import Customers from './pages/Customers';
+import Vehicles from './pages/Vehicles';
+import Drivers from './pages/Drivers';
+import Products from './pages/Products';
+import Otif from './pages/Otif';
 import { ToastProvider } from './components/Toast';
 
-// Sin token va al login; con token de otro rol va a su propia pantalla
-const RutaProtegida = ({ rol, children }) => {
+// Without a token it goes to the login; a role without access to the screen goes to its own home
+const ProtectedRoute = ({ roles, children }) => {
     const token = localStorage.getItem('token');
-    const rolActual = localStorage.getItem('rol');
+    const role = localStorage.getItem('role');
     if (!token) return <Navigate to="/" />;
-    if (rolActual !== rol) {
-        return <Navigate to={rolActual === 'conductor' ? '/conductor' : '/dashboard'} />;
+    if (!roles.includes(role)) {
+        return <Navigate to={role === 'driver' ? '/route' : '/orders'} />;
     }
     return children;
+};
+
+const MANAGEMENT = ['admin', 'supervisor'];
+
+// path -> [roles allowed, page component]
+const ROUTES = {
+    '/orders': [['dispatcher', ...MANAGEMENT], Orders],
+    '/customers': [MANAGEMENT, Customers],
+    '/vehicles': [MANAGEMENT, Vehicles],
+    '/drivers': [MANAGEMENT, Drivers],
+    '/products': [MANAGEMENT, Products],
+    '/otif': [MANAGEMENT, Otif],
+    '/route': [['driver'], DriverRoute],
 };
 
 function App() {
@@ -22,12 +40,9 @@ function App() {
             <Router>
                 <Routes>
                     <Route path="/" element={<Login />} />
-                    <Route path="/dashboard" element={
-                        <RutaProtegida rol="despachador"><Dashboard /></RutaProtegida>
-                    } />
-                    <Route path="/conductor" element={
-                        <RutaProtegida rol="conductor"><Conductor /></RutaProtegida>
-                    } />
+                    {Object.entries(ROUTES).map(([path, [roles, Page]]) => (
+                        <Route key={path} path={path} element={<ProtectedRoute roles={roles}><Page /></ProtectedRoute>} />
+                    ))}
                 </Routes>
             </Router>
         </ToastProvider>

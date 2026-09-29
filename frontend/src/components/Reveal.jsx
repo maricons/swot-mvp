@@ -1,12 +1,10 @@
-﻿// src/components/Reveal.jsx
+// src/components/Reveal.jsx
 import { useEffect, useRef, useState } from 'react';
 
-// Aparece con un fundido suave hacia arriba cuando entra en pantalla.
-// En paginas largas, cada bloque se anima al hacer scroll.
+// Fades in and slides up when it enters the screen, so long pages load in gradually as you scroll.
 function Reveal({ children, delay = 0, className = '' }) {
     const ref = useRef(null);
-    // Si el navegador no soporta IntersectionObserver, se muestra de inmediato
-    const [visible, setVisible] = useState(() => !('IntersectionObserver' in window));
+    const [visible, setVisible] = useState(false);
 
     useEffect(() => {
         const el = ref.current;
@@ -36,4 +34,3 @@ function Reveal({ children, delay = 0, className = '' }) {
 }
 
 export default Reveal;
-
