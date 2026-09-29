@@ -13,6 +13,7 @@ const TINY_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAf
 const created = { orders: [], products: [], drivers: [], customers: [], vehicles: [], containers: [] };
 const tokens = {};
 let server;
+let serverOutput = ''; // everything the server prints (the recovery mail goes there when no SMTP is set)
 
 // Sends a request and returns { status, body } (body is parsed JSON, or the raw type for files)
 const call = async (method, path, { token, body } = {}) => {
@@ -30,6 +31,7 @@ const futureDay = (days) => new Date(Date.now() + days * 864e5).toLocaleDateStri
 
 before(async () => {
     server = spawn('node', ['server.js'], { env: { ...process.env, PORT: '3998' }, stdio: ['ignore', 'pipe', 'inherit'] });
+    server.stdout.on('data', (d) => { serverOutput += d.toString(); });
     await new Promise((resolve) => server.stdout.on('data', (d) => d.toString().includes('API corriendo') && resolve()));
 
     tokens.dispatcher = await login('despachador@swot.cl');
@@ -48,7 +50,7 @@ after(async () => {
     }
     for (const id of created.containers) await run(`DELETE FROM container_event WHERE container_id = ${id}; DELETE FROM container WHERE id = ${id}`);
     for (const id of created.products) await run(`DELETE FROM product WHERE id = ${id}`);
-    for (const id of created.drivers) await run(`DELETE FROM truck_position WHERE driver_id = ${id}`);
+    for (const id of created.drivers) await run(`DELETE FROM password_reset WHERE user_id = ${id}; DELETE FROM truck_position WHERE driver_id = ${id}`);
     for (const id of created.drivers) await run(`DELETE FROM app_user WHERE id = ${id}`);
     for (const id of created.customers) await run(`DELETE FROM customer WHERE id = ${id}`);
     for (const id of created.vehicles) await run(`DELETE FROM vehicle WHERE id = ${id}`);
@@ -346,4 +348,58 @@ test('maps: customer points, the driver reports the truck and the supervisor see
     const pool = await poolPromise;
     const left = await pool.request().query(`SELECT COUNT(*) AS n FROM truck_position WHERE driver_id = ${driverMade.body.id}`);
     assert.equal(left.recordset[0].n, 0);
+});
+
+// The server prints the recovery mail on its console when no SMTP is configured, so the test can read the link from there
+const lastResetToken = (email) => {
+    const mails = serverOutput.split('[mail]').filter((m) => m.includes(`to=${email}`));
+    return mails.length ? mails[mails.length - 1].match(/reset-password\?token=([a-f0-9]{64})/)?.[1] : undefined;
+};
+
+test('password recovery: one-time link, old sessions end, no way to find out who has an account', async () => {
+    const user = { name: 'ZZ Reset Driver', email: 'zz.reset.driver@swot.cl', password: 'abcd1234' };
+    const made = await call('POST', '/drivers', { token: tokens.admin, body: user });
+    created.drivers.push(made.body.id);
+    const oldToken = (await call('POST', '/auth/login', { body: { email: user.email, password: user.password } })).body.token;
+    assert.equal((await call('GET', '/my-route', { token: oldToken })).status, 200);
+
+    // The same answer for a registered and an unknown email; a bad email is rejected
+    const known = await call('POST', '/auth/forgot-password', { body: { email: user.email } });
+    const unknown = await call('POST', '/auth/forgot-password', { body: { email: 'nobody.here@swot.cl' } });
+    assert.equal(known.status, 200);
+    assert.deepEqual(unknown.body, known.body);
+    assert.equal((await call('POST', '/auth/forgot-password', { body: { email: 'not-an-email' } })).status, 400);
+    await new Promise((resolve) => setTimeout(resolve, 300)); // the mail is sent after the answer
+    assert.equal(lastResetToken('nobody.here@swot.cl'), undefined);
+    const link = lastResetToken(user.email);
+    assert.match(link, /^[a-f0-9]{64}$/);
+
+    // Bad links and bad passwords are rejected
+    assert.equal((await call('POST', '/auth/reset-password', { body: { token: 'f'.repeat(64), password: 'newpass123' } })).status, 400);
+    assert.equal((await call('POST', '/auth/reset-password', { body: { token: 'short', password: 'newpass123' } })).status, 400);
+    assert.equal((await call('POST', '/auth/reset-password', { body: { token: link, password: '123' } })).status, 400);
+
+    // Token times are in whole seconds: wait one so the session opened above is clearly older than the change
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+
+    // The link works once
+    assert.equal((await call('POST', '/auth/reset-password', { body: { token: link, password: 'newpass123' } })).status, 200);
+    assert.equal((await call('POST', '/auth/reset-password', { body: { token: link, password: 'another123' } })).status, 400);
+
+    // The old password no longer works, the new one does, and the session opened before the change is over
+    assert.equal((await call('POST', '/auth/login', { body: { email: user.email, password: user.password } })).status, 401);
+    const fresh = await call('POST', '/auth/login', { body: { email: user.email, password: 'newpass123' } });
+    assert.equal(fresh.status, 200);
+    assert.equal((await call('GET', '/my-route', { token: oldToken })).status, 401);
+    assert.equal((await call('GET', '/my-route', { token: fresh.body.token })).status, 200);
+
+    // Asking again cancels the previous link
+    await call('POST', '/auth/forgot-password', { body: { email: user.email } });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const first = lastResetToken(user.email);
+    await call('POST', '/auth/forgot-password', { body: { email: user.email } });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const second = lastResetToken(user.email);
+    assert.notEqual(first, second);
+    assert.equal((await call('POST', '/auth/reset-password', { body: { token: first, password: 'stale12345' } })).status, 400);
 });

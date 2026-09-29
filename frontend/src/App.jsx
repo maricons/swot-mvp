@@ -10,6 +10,7 @@ import Products from './pages/Products';
 import Otif from './pages/Otif';
 import Containers from './pages/Containers';
 import Fleet from './pages/Fleet';
+import ResetPassword from './pages/ResetPassword';
 import { homeRoute } from './utils/format';
 import { ToastProvider } from './components/Toast';
 
@@ -45,6 +46,7 @@ function App() {
             <Router>
                 <Routes>
                     <Route path="/" element={<Login />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
                     {Object.entries(ROUTES).map(([path, [roles, Page]]) => (
                         <Route key={path} path={path} element={<ProtectedRoute roles={roles}><Page /></ProtectedRoute>} />
                     ))}

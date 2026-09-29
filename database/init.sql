@@ -12,7 +12,19 @@ CREATE TABLE app_user (
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL,
     IsActive BIT NOT NULL CONSTRAINT df_app_user_IsActive DEFAULT 1,
+    password_changed_at DATETIME NULL,   -- sessions started before this moment are no longer valid
     CONSTRAINT ck_app_user_role CHECK (role IN ('dispatcher', 'driver', 'admin', 'supervisor', 'yard'))
+);
+
+-- Password recovery: one row per link sent by email. Only the SHA-256 hash of the token is stored,
+-- so a leaked database cannot be used to reset anyone's password. Each link works once and expires.
+CREATE TABLE password_reset (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    user_id INT NOT NULL FOREIGN KEY REFERENCES app_user(id),
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    expires_at DATETIME NOT NULL,
+    used_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT GETDATE()
 );
 
 -- 2. Customers (companies). tax_id is the Chilean RUT

@@ -54,7 +54,18 @@ const loginLimiter = rateLimit({
     message: { error: 'Demasiados intentos fallidos. Espera 2 minutos e intenta de nuevo.' },
 });
 
+// Password recovery: asking for links is limited to 5 every 15 minutes per IP, using one to 10
+const recoveryLimiter = (limit) => rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Demasiados intentos. Espera unos minutos e intenta de nuevo.' },
+});
+
 app.post('/api/auth/login', loginLimiter, authController.login);
+app.post('/api/auth/forgot-password', recoveryLimiter(5), authController.forgotPassword);
+app.post('/api/auth/reset-password', recoveryLimiter(10), authController.resetPassword);
 
 // Who can do what
 const ADMIN = ['admin'];

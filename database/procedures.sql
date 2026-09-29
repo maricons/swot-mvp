@@ -183,3 +183,20 @@ BEGIN
     COMMIT;
 END;
 GO
+
+-- 7. Set a new password from a recovery link: saves it, ends the old sessions and closes the user's open links
+CREATE OR ALTER PROCEDURE sp_reset_password
+    @reset_id INT,
+    @user_id INT,
+    @password_hash VARCHAR(255)
+AS
+BEGIN
+    SET XACT_ABORT ON;
+    BEGIN TRAN;
+
+    UPDATE app_user SET password_hash = @password_hash, password_changed_at = GETDATE() WHERE id = @user_id;
+    UPDATE password_reset SET used_at = GETDATE() WHERE user_id = @user_id AND used_at IS NULL;
+
+    COMMIT;
+END;
+GO
