@@ -1,5 +1,5 @@
 const { sql, poolPromise } = require('../config/db');
-const { FREE_DAYS } = require('../config/storage');
+const { RATE_JOIN, BILLABLE_DAYS } = require('../config/storage');
 const { normalizeContainerNumber, isDate, isPositiveInt, internalError } = require('../utils/validate');
 
 const CONTAINER_TYPES = ['20DV', '40DV', '40HC', '20RF', '40RF'];
@@ -7,17 +7,19 @@ const CARGO_TYPES = ['dry', 'perishable'];
 const STATUSES = ['Expected', 'InYard', 'Departed'];
 const STATUS_LABELS = { Expected: 'Esperado', InYard: 'En patio', Departed: 'Retirado' };
 
-// Same columns for the list and the detail. days_in_yard counts up to now while the container is still inside
+// Same columns for the list and the detail. daysInYard counts up to now while the container is still inside;
+// the charge is what it costs so far (final once it departed)
 const CONTAINER_COLUMNS = `c.id, c.container_number AS containerNumber, c.customer_id AS customerId, cu.name AS customerName,
     c.container_type AS containerType, c.cargo_type AS cargoType, c.temperature_c AS temperatureC,
     c.seal_number AS sealNumber, c.status, c.yard_location AS yardLocation,
     CONVERT(VARCHAR(10), c.expected_arrival, 23) AS expectedArrival, c.arrived_at AS arrivedAt,
     CONVERT(VARCHAR(10), c.planned_departure, 23) AS plannedDeparture, c.departed_at AS departedAt, c.notes,
     CASE WHEN c.arrived_at IS NULL THEN NULL ELSE DATEDIFF(DAY, c.arrived_at, COALESCE(c.departed_at, GETDATE())) END AS daysInYard,
-    CASE WHEN c.status = 'InYard' AND DATEDIFF(DAY, c.arrived_at, GETDATE()) > ${FREE_DAYS} THEN 1 ELSE 0 END AS overstay,
+    r.free_days AS freeDays, r.daily_rate AS dailyRate, ${BILLABLE_DAYS} AS billableDays, ${BILLABLE_DAYS} * r.daily_rate AS charge,
+    CASE WHEN c.status = 'InYard' AND ${BILLABLE_DAYS} > 0 THEN 1 ELSE 0 END AS overstay,
     CASE WHEN c.status IN ('Expected', 'InYard') AND c.planned_departure < CAST(GETDATE() AS DATE) THEN 1 ELSE 0 END AS departureOverdue`;
 
-const FROM = 'FROM container c JOIN customer cu ON cu.id = c.customer_id';
+const FROM = `FROM container c JOIN customer cu ON cu.id = c.customer_id ${RATE_JOIN}`;
 
 // Yard positions like A-03-2: letters, digits and hyphens
 const cleanLocation = (text) => (typeof text === 'string' && /^[A-Za-z0-9-]{1,20}$/.test(text.trim()) ? text.trim().toUpperCase() : null);
@@ -113,16 +115,16 @@ exports.summary = async (req, res) => {
         const pool = await poolPromise;
         const { recordset } = await pool.request().query(
             `SELECT
-                COALESCE(SUM(CASE WHEN status = 'Expected' THEN 1 END), 0) AS expected,
-                COALESCE(SUM(CASE WHEN status = 'InYard' THEN 1 END), 0) AS inYard,
-                COALESCE(SUM(CASE WHEN status = 'Departed' THEN 1 END), 0) AS departed,
-                COALESCE(SUM(CASE WHEN status = 'InYard' AND cargo_type = 'perishable' THEN 1 END), 0) AS perishableInYard,
-                COALESCE(SUM(CASE WHEN status = 'InYard' AND cargo_type = 'dry' THEN 1 END), 0) AS dryInYard,
-                COALESCE(SUM(CASE WHEN status = 'InYard' AND DATEDIFF(DAY, arrived_at, GETDATE()) > ${FREE_DAYS} THEN 1 END), 0) AS overstays,
-                COALESCE(AVG(CASE WHEN status = 'InYard' THEN DATEDIFF(DAY, arrived_at, GETDATE()) END), 0) AS avgDaysInYard
-             FROM container`
+                COALESCE(SUM(CASE WHEN c.status = 'Expected' THEN 1 END), 0) AS expected,
+                COALESCE(SUM(CASE WHEN c.status = 'InYard' THEN 1 END), 0) AS inYard,
+                COALESCE(SUM(CASE WHEN c.status = 'Departed' THEN 1 END), 0) AS departed,
+                COALESCE(SUM(CASE WHEN c.status = 'InYard' AND c.cargo_type = 'perishable' THEN 1 END), 0) AS perishableInYard,
+                COALESCE(SUM(CASE WHEN c.status = 'InYard' AND c.cargo_type = 'dry' THEN 1 END), 0) AS dryInYard,
+                COALESCE(SUM(CASE WHEN c.status = 'InYard' AND ${BILLABLE_DAYS} > 0 THEN 1 END), 0) AS overstays,
+                COALESCE(AVG(CASE WHEN c.status = 'InYard' THEN DATEDIFF(DAY, c.arrived_at, GETDATE()) END), 0) AS avgDaysInYard
+             FROM container c ${RATE_JOIN}`
         );
-        res.json({ ...recordset[0], freeDays: FREE_DAYS });
+        res.json(recordset[0]);
     } catch (error) {
         internalError(res, error);
     }

@@ -13,6 +13,7 @@ const otifController = require('./src/controllers/otifController');
 const alertController = require('./src/controllers/alertController');
 const containerController = require('./src/controllers/containerController');
 const fleetController = require('./src/controllers/fleetController');
+const billingController = require('./src/controllers/billingController');
 const auth = require('./src/middlewares/auth');
 const role = require('./src/middlewares/role');
 
@@ -111,6 +112,13 @@ app.put('/api/containers/:id', auth, role(YARD_WRITE), containerController.updat
 app.post('/api/containers/:id/arrive', auth, role(YARD_WRITE), containerController.arrive);
 app.post('/api/containers/:id/move', auth, role(YARD_WRITE), containerController.move);
 app.post('/api/containers/:id/depart', auth, role(YARD_WRITE), containerController.depart);
+
+// Storage billing (what each container costs past its free days) and the tariff behind it
+app.get('/api/billing', auth, role(MANAGEMENT), billingController.getBilling);
+app.get('/api/billing/export/excel', auth, role(MANAGEMENT), billingController.exportExcel);
+app.get('/api/billing/export/pdf', auth, role(MANAGEMENT), billingController.exportPdf);
+app.get('/api/storage-rates', auth, role(YARD_READ), billingController.getRates);
+app.put('/api/storage-rates/:type', auth, role(ADMIN), billingController.updateRate);
 
 // OTIF indicator and alerts
 app.get('/api/otif', auth, role(MANAGEMENT), otifController.getOtif);

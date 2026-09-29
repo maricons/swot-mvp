@@ -146,6 +146,17 @@ CREATE TABLE container_event (
 );
 GO
 
+-- 11. Storage tariff per container type: days included for free, then a daily rate (CLP) for every extra day in the yard
+CREATE TABLE storage_rate (
+    container_type VARCHAR(4) NOT NULL PRIMARY KEY,
+    free_days INT NOT NULL CHECK (free_days BETWEEN 0 AND 60),
+    daily_rate INT NOT NULL CHECK (daily_rate BETWEEN 0 AND 1000000),
+    CONSTRAINT fk_storage_rate_type CHECK (container_type IN ('20DV', '40DV', '40HC', '20RF', '40RF'))
+);
+INSERT INTO storage_rate (container_type, free_days, daily_rate) VALUES
+('20DV', 5, 12000), ('40DV', 5, 20000), ('40HC', 5, 22000), ('20RF', 3, 35000), ('40RF', 3, 55000);
+GO
+
 -- TEST DATA (every user's password is hash_simulado_123, stored with bcrypt)
 INSERT INTO app_user (name, email, password_hash, role) VALUES
 ('Admin Despachos', 'despachador@swot.cl', '$2b$10$in5zTSAbMxTHDsQRhGmGHeivVrONc/GFO1utYKvmmIzosFfuDZt3W', 'dispatcher'),

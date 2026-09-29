@@ -285,7 +285,7 @@ test('containers: announce, arrive, move and depart with history', async () => {
 test('containers: summary and alerts by service', async () => {
     const summary = await call('GET', '/containers/summary', { token: tokens.yard });
     assert.equal(summary.status, 200);
-    for (const key of ['expected', 'inYard', 'departed', 'perishableInYard', 'dryInYard', 'overstays', 'avgDaysInYard', 'freeDays']) {
+    for (const key of ['expected', 'inYard', 'departed', 'perishableInYard', 'dryInYard', 'overstays', 'avgDaysInYard']) {
         assert.ok(key in summary.body, `summary has ${key}`);
     }
 
@@ -402,4 +402,51 @@ test('password recovery: one-time link, old sessions end, no way to find out who
     const second = lastResetToken(user.email);
     assert.notEqual(first, second);
     assert.equal((await call('POST', '/auth/reset-password', { body: { token: first, password: 'stale12345' } })).status, 400);
+});
+
+test('billing: days past the free days of each type are charged, the tariff is admin only', async () => {
+    const number = newContainerNumber();
+    const made = await call('POST', '/containers', { token: tokens.yard, body: { containerNumber: number, customerId: 1, containerType: '20DV', cargoType: 'dry' } });
+    const id = made.body.id;
+    created.containers.push(id);
+    await call('POST', `/containers/${id}/arrive`, { token: tokens.yard, body: { yardLocation: 'Z-01-1' } });
+
+    // Just arrived: inside the free days, nothing to pay
+    let detail = (await call('GET', `/containers/${id}`, { token: tokens.supervisor })).body.container;
+    assert.deepEqual([detail.freeDays, detail.billableDays, detail.charge], [5, 0, 0]);
+    const listed = (await call('GET', '/billing', { token: tokens.supervisor })).body;
+    assert.ok(!listed.containers.some((c) => c.id === id));
+
+    // 8 days in the yard with 5 free = 3 days at the 20DV rate
+    const pool = await poolPromise;
+    await pool.request().query(`UPDATE container SET arrived_at = DATEADD(DAY, -8, GETDATE()) WHERE id = ${id}`);
+    detail = (await call('GET', `/containers/${id}`, { token: tokens.supervisor })).body.container;
+    assert.deepEqual([detail.billableDays, detail.charge, detail.overstay], [3, 3 * detail.dailyRate, 1]);
+    const billing = (await call('GET', '/billing', { token: tokens.supervisor })).body;
+    const row = billing.containers.find((c) => c.id === id);
+    assert.equal(row.charge, detail.charge);
+    assert.equal(billing.byCustomer.find((c) => c.customerId === 1).charge >= detail.charge, true);
+    assert.equal(billing.total, billing.accruing + billing.closed);
+
+    // It keeps growing while inside and is final once it departed
+    await call('POST', `/containers/${id}/depart`, { token: tokens.yard });
+    const closed = (await call('GET', `/billing?status=Departed&customerId=1`, { token: tokens.admin })).body;
+    assert.equal(closed.containers.find((c) => c.id === id).charge, detail.charge);
+
+    // Exports and permissions
+    assert.equal((await call('GET', '/billing/export/excel', { token: tokens.supervisor })).status, 200);
+    assert.equal((await call('GET', '/billing/export/pdf', { token: tokens.admin })).type, 'application/pdf');
+    assert.equal((await call('GET', '/billing', { token: tokens.yard })).status, 403);
+    assert.equal((await call('GET', '/billing?status=x', { token: tokens.admin })).status, 400);
+    assert.equal((await call('GET', '/storage-rates', { token: tokens.yard })).status, 200);
+    assert.equal((await call('GET', '/storage-rates', { token: tokens.dispatcher })).status, 403);
+
+    // Tariff: only the admin edits it, with limits; here it is written back to the same values
+    const rate = (await call('GET', '/storage-rates', { token: tokens.admin })).body.find((r) => r.containerType === '20DV');
+    const put = (token, body, type = '20DV') => call('PUT', `/storage-rates/${type}`, { token, body });
+    assert.equal((await put(tokens.supervisor, rate)).status, 403);
+    assert.equal((await put(tokens.admin, { freeDays: -1, dailyRate: 100 })).status, 400);
+    assert.equal((await put(tokens.admin, { freeDays: 5, dailyRate: 'a lot' })).status, 400);
+    assert.equal((await put(tokens.admin, rate, '99XX')).status, 404);
+    assert.equal((await put(tokens.admin, { freeDays: rate.freeDays, dailyRate: rate.dailyRate })).status, 200);
 });

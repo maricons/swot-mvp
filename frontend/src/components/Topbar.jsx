@@ -12,6 +12,7 @@ const LINKS = {
     otif: { path: '/otif', text: 'OTIF' },
     fleet: { path: '/fleet', text: 'Flota' },
     containers: { path: '/containers', text: 'Contenedores' },
+    billing: { path: '/billing', text: 'Cobros' },
 };
 
 // The company sells two services: transporting cargo and storing containers.
@@ -21,8 +22,8 @@ const MANAGEMENT_TRANSPORT = ['orders', 'fleet', 'customers', 'vehicles', 'drive
 const MENU = {
     dispatcher: { transport: ['orders'] },
     driver: {},
-    supervisor: { transport: MANAGEMENT_TRANSPORT, storage: ['containers', 'customers'] },
-    admin: { transport: MANAGEMENT_TRANSPORT, storage: ['containers', 'customers'] },
+    supervisor: { transport: MANAGEMENT_TRANSPORT, storage: ['containers', 'billing', 'customers'] },
+    admin: { transport: MANAGEMENT_TRANSPORT, storage: ['containers', 'billing', 'customers'] },
     yard: { storage: ['containers'] },
 };
 
@@ -36,7 +37,7 @@ function Topbar() {
     const services = Object.keys(menu);
 
     // The page decides the service; the shared customers page keeps the one chosen before
-    const owner = pathname === '/containers' ? 'storage' : pathname === '/customers' ? null : 'transport';
+    const owner = ['/containers', '/billing'].includes(pathname) ? 'storage' : pathname === '/customers' ? null : 'transport';
     const current = [owner, sessionStorage.getItem('service')].find((s) => services.includes(s)) || services[0];
 
     useEffect(() => {

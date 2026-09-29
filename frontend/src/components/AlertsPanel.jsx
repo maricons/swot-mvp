@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import Reveal from './Reveal';
-import { formatContainerNumber, formatDay } from '../utils/format';
+import { formatContainerNumber, formatDay, formatMoney } from '../utils/format';
 
 const MAX_ITEMS = 4;
 
@@ -32,8 +32,8 @@ function AlertsPanel({ sections = ['vehicles', 'orders'], version = 0 }) {
         ['orders', 'OT atrasadas', alerts.overdueOrders, (o) => (
             <><strong>#{o.id}</strong> {o.customerName} · {days(o.daysLate)} de atraso</>
         )],
-        ['containers', `Contenedores con más de ${alerts.freeDays} días en patio`, alerts.overstayContainers, (c) => (
-            <><strong>{formatContainerNumber(c.containerNumber)}</strong> {c.customerName} · {days(c.daysInYard)} en {c.yardLocation}</>
+        ['containers', 'Contenedores pasados de sus días libres', alerts.overstayContainers, (c) => (
+            <><strong>{formatContainerNumber(c.containerNumber)}</strong> {c.customerName} · {days(c.daysInYard)} en {c.yardLocation} · {formatMoney(c.charge)}</>
         )],
         ['containers', 'Salida prevista vencida', alerts.overdueContainers, (c) => (
             <><strong>{formatContainerNumber(c.containerNumber)}</strong> {c.customerName} · {days(c.daysLate)} de atraso</>
