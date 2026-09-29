@@ -594,3 +594,42 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .tracking-denied, .tracking-error, .tracking-unsupported { background: #fbf0d6; color: #8a6418; }
 .pill-link { text-decoration: none; cursor: pointer; background: var(--primary-soft); color: var(--primary); }
 .pill-link:hover { background: #d3e8e8; }
+
+/* ===== Containers as cards (tablet and phone friendly) ===== */
+.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 14px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip-filter { flex-shrink: 0; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 999px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
+.chip-filter:hover { border-color: var(--accent); color: var(--primary); }
+.chip-filter-on { background: var(--primary); border-color: var(--primary); color: #fff; }
+.chip-filter-on:hover { color: #fff; }
+.chip-count { background: rgba(0, 0, 0, 0.08); border-radius: 999px; padding: 1px 8px; font-size: 12px; }
+.chip-filter-on .chip-count { background: rgba(255, 255, 255, 0.22); }
+
+.container-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.cc { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; cursor: pointer; display: flex; flex-direction: column; gap: 10px; transition: box-shadow 0.15s, border-color 0.15s, transform 0.05s; }
+.cc:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+.cc:active { transform: scale(0.99); }
+.cc:focus-visible { outline: 3px solid rgba(7, 153, 182, 0.35); outline-offset: 2px; }
+.cc-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.cc-number { font-size: 15px; }
+.cc-customer { font-weight: 600; }
+.cc-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill-cold { background: #dff1f5; color: #2a7d90; }
+.pill-loc { background: var(--primary-soft); color: var(--primary); }
+.cc-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 13px; color: var(--muted); margin-top: auto; }
+.flag { color: var(--danger); font-weight: 700; }
+.cc-skeleton { height: 150px; border-radius: 16px; }
+
+/* Actions on the container screen: big buttons, easy to hit with a thumb */
+.action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px; }
+.btn-big { min-height: 52px; font-size: 16px; border-radius: 14px; }
+
+/* ===== Phones: modals become bottom sheets and inputs are big enough to type on ===== */
+@media (max-width: 600px) {
+  .overlay { place-items: end stretch; padding: 0; }
+  .modal { max-width: none; width: 100%; max-height: 92vh; border-radius: 22px 22px 0 0; padding: 20px 18px 26px; animation: sheet 0.25s ease; }
+  .modal-foot .btn { min-height: 46px; }
+  .input { font-size: 16px; min-height: 46px; } /* 16px also stops iOS from zooming when a field is focused */
+  .container-grid { grid-template-columns: 1fr; }
+}
+@keyframes sheet { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }

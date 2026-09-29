@@ -15,6 +15,13 @@ import { CARGO_LABELS, CONTAINER_STATUS_LABELS, formatContainerNumber, formatDat
 const STATUS_COLORS = { InYard: '#9fd6b4', Expected: '#8fa7d6', Departed: '#c9d3dd' };
 const EMPTY_FILTERS = { status: '', cargoType: '', search: '' };
 
+// Second line of a card: how long it has been in the yard, when it is expected, or when it left
+const footText = (c) => {
+    if (c.status === 'InYard') return `${c.daysInYard} ${c.daysInYard === 1 ? 'día' : 'días'} en patio`;
+    if (c.status === 'Expected') return c.expectedArrival ? `Esperado el ${formatDay(c.expectedArrival)}` : 'Sin fecha de llegada';
+    return `Salió el ${formatDate(c.departedAt)}`;
+};
+
 // Container storage: what is in the yard, what is coming and what already left, with the actions to record each movement
 function Containers() {
     const [containers, setContainers] = useState([]);
@@ -48,6 +55,13 @@ function Containers() {
         setEvent(null);
         reload();
     };
+
+    const statusChips = [
+        ['', 'Todos', summary && summary.inYard + summary.expected + summary.departed],
+        ['InYard', CONTAINER_STATUS_LABELS.InYard, summary?.inYard],
+        ['Expected', 'Esperados', summary?.expected],
+        ['Departed', 'Retirados', summary?.departed],
+    ];
 
     const tiles = [
         ['En patio', summary?.inYard],
@@ -103,18 +117,21 @@ function Containers() {
 
                 <Reveal>
                     <section className="card">
+                        <div className="chips" role="tablist" aria-label="Estado">
+                            {statusChips.map(([value, label, count]) => (
+                                <button key={value} type="button" role="tab" aria-selected={filters.status === value}
+                                    className={`chip-filter ${filters.status === value ? 'chip-filter-on' : ''}`}
+                                    onClick={() => setFilters({ ...filters, status: value })}>
+                                    {label}{count != null && <span className="chip-count">{count}</span>}
+                                </button>
+                            ))}
+                        </div>
+
                         <div className="filters">
-                            <div className="field" style={{ width: 240 }}>
+                            <div className="field" style={{ width: 260 }}>
                                 <label>Buscar</label>
                                 <input className="input" name="search" placeholder="Número, cliente, ubicación o precinto"
                                     value={filters.search} onChange={changeFilter} />
-                            </div>
-                            <div className="field">
-                                <label>Estado</label>
-                                <select className="input" name="status" value={filters.status} onChange={changeFilter}>
-                                    <option value="">Todos</option>
-                                    {Object.entries(CONTAINER_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                                </select>
                             </div>
                             <div className="field">
                                 <label>Carga</label>
@@ -126,74 +143,53 @@ function Containers() {
                             <button className="btn btn-ghost" onClick={() => setFilters(EMPTY_FILTERS)}>Limpiar</button>
                         </div>
 
-                        <div className="table-wrap">
-                            <table className="table">
-                                <thead>
-                                    <tr>
-                                        <th>Contenedor</th>
-                                        <th>Estado</th>
-                                        <th>Cliente</th>
-                                        <th>Carga</th>
-                                        <th>Ubicación</th>
-                                        <th>Llegada</th>
-                                        <th>Salida prevista</th>
-                                        <th className="num">Días</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {loading && [1, 2, 3, 4].map((n) => (
-                                        <tr key={`sk-${n}`}>
-                                            {[120, 80, 120, 90, 70, 90, 90, 30, 140].map((w, i) => (
-                                                <td key={i}><span className="skeleton sk-line" style={{ width: w }} /></td>
-                                            ))}
-                                        </tr>
-                                    ))}
-                                    {!loading && containers.map((c, i) => (
-                                        <tr key={c.id} className="row-in" style={{ animationDelay: `${Math.min(i, 12) * 45}ms` }}>
-                                            <td>
-                                                <strong className="mono">{formatContainerNumber(c.containerNumber)}</strong>
-                                                <div className="hint">{c.containerType}{c.sealNumber && ` · ${c.sealNumber}`}</div>
-                                            </td>
-                                            <td><ContainerStatusBadge status={c.status} /></td>
-                                            <td>{c.customerName}</td>
-                                            <td>
-                                                {c.cargoType === 'perishable'
-                                                    ? <span className="cargo cargo-cold">❄ {CARGO_LABELS.perishable} · {c.temperatureC} °C</span>
-                                                    : <span className="cargo">{CARGO_LABELS.dry}</span>}
-                                            </td>
-                                            <td className="mono">{c.yardLocation || '—'}</td>
-                                            <td>{c.arrivedAt ? formatDate(c.arrivedAt) : <span className="hint">{c.expectedArrival ? `esperado ${formatDay(c.expectedArrival)}` : 'sin fecha'}</span>}</td>
-                                            <td className={c.departureOverdue ? 'text-late' : ''}>{formatDay(c.plannedDeparture)}</td>
-                                            <td className={`num ${c.overstay ? 'text-late' : ''}`}>{c.daysInYard ?? '—'}</td>
-                                            <td className="actions">
-                                                {canWrite && c.status === 'Expected' && (
-                                                    <button className="btn btn-primary btn-sm" onClick={() => setEvent({ container: c, kind: 'arrive' })}>Registrar llegada</button>
-                                                )}
-                                                {canWrite && c.status === 'InYard' && (
-                                                    <>
-                                                        <button className="btn btn-sm" onClick={() => setEvent({ container: c, kind: 'move' })}>Mover</button>
-                                                        <button className="btn btn-primary btn-sm" onClick={() => setEvent({ container: c, kind: 'depart' })}>Registrar salida</button>
-                                                    </>
-                                                )}
-                                                {canWrite && c.status !== 'Departed' && (
-                                                    <button className="btn btn-ghost btn-sm" onClick={() => setEditing({ row: c })}>Editar</button>
-                                                )}
-                                                <button className="btn btn-sm" onClick={() => setDetailId(c.id)}>Detalle</button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            {!loading && containers.length === 0 && <div className="empty">No hay contenedores con estos filtros.</div>}
+                        {/* One card per container: big enough to tap on a phone or a tablet. Tapping opens its screen with the actions */}
+                        <div className="container-grid">
+                            {loading && [1, 2, 3, 4].map((n) => <span key={n} className="skeleton cc-skeleton" />)}
+                            {!loading && containers.map((c, i) => (
+                                <article key={c.id} className="cc row-in" role="button" tabIndex={0}
+                                    style={{ animationDelay: `${Math.min(i, 12) * 45}ms` }}
+                                    onClick={() => setDetailId(c.id)}
+                                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setDetailId(c.id)}>
+                                    <div className="cc-top">
+                                        <strong className="mono cc-number">{formatContainerNumber(c.containerNumber)}</strong>
+                                        <ContainerStatusBadge status={c.status} />
+                                    </div>
+                                    <div className="cc-customer">{c.customerName}</div>
+                                    <div className="cc-tags">
+                                        <span className="pill">{c.containerType}</span>
+                                        {c.cargoType === 'perishable'
+                                            ? <span className="pill pill-cold">❄ {c.temperatureC} °C</span>
+                                            : <span className="pill">{CARGO_LABELS.dry}</span>}
+                                        {c.yardLocation && <span className="pill pill-loc">📍 {c.yardLocation}</span>}
+                                    </div>
+                                    <div className="cc-foot">
+                                        <span>{footText(c)}</span>
+                                        {c.overstay ? <span className="flag">⚠ Pasado de plazo</span> : null}
+                                        {c.departureOverdue ? <span className="flag">⏰ Salida vencida</span> : null}
+                                    </div>
+                                </article>
+                            ))}
                         </div>
+                        {!loading && containers.length === 0 && <div className="empty">No hay contenedores con estos filtros.</div>}
                     </section>
                 </Reveal>
             </main>
 
             {editing && <ContainerModal row={editing.row} onClose={() => setEditing(null)} onSaved={saved} />}
             {event && <ContainerEventModal container={event.container} kind={event.kind} onClose={() => setEvent(null)} onSaved={saved} />}
-            {detailId && <ContainerDetailModal containerId={detailId} onClose={() => setDetailId(null)} />}
+            {detailId && (
+                <ContainerDetailModal
+                    containerId={detailId}
+                    canWrite={canWrite}
+                    onClose={() => setDetailId(null)}
+                    onAction={(kind, container) => {
+                        setDetailId(null);
+                        if (kind === 'edit') setEditing({ row: container });
+                        else setEvent({ container, kind });
+                    }}
+                />
+            )}
         </>
     );
 }

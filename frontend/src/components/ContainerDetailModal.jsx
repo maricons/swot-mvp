@@ -6,7 +6,16 @@ import { CARGO_LABELS, CONTAINER_TYPES, EVENT_LABELS, formatContainerNumber, for
 
 const typeLabel = (code) => (CONTAINER_TYPES.find(([c]) => c === code) || [code, code])[1];
 
-function ContainerDetailModal({ containerId, onClose }) {
+// What can be done with a container depending on where it is: [action, label, primary]
+const ACTIONS = {
+    Expected: [['arrive', 'Registrar llegada', true], ['edit', 'Editar', false]],
+    InYard: [['move', 'Mover de posición', false], ['depart', 'Registrar salida', true], ['edit', 'Editar', false]],
+    Departed: [],
+};
+
+// The screen of one container: its data, the buttons to act on it (for the yard operator and the admin) and its history.
+// onAction(kind, container) is called with "arrive", "move", "depart" or "edit".
+function ContainerDetailModal({ containerId, canWrite, onClose, onAction }) {
     const [data, setData] = useState(null);
     const [error, setError] = useState('');
 
@@ -31,6 +40,16 @@ function ContainerDetailModal({ containerId, onClose }) {
 
                 {c && (
                     <>
+                        {canWrite && ACTIONS[c.status].length > 0 && (
+                            <div className="action-grid">
+                                {ACTIONS[c.status].map(([kind, label, primary]) => (
+                                    <button key={kind} className={`btn btn-big ${primary ? 'btn-primary' : ''}`} onClick={() => onAction(kind, c)}>
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
                         <dl className="detail-grid">
                             <div className="detail-item"><dt>Estado</dt><dd><ContainerStatusBadge status={c.status} /></dd></div>
                             <div className="detail-item"><dt>Cliente</dt><dd>{c.customerName}</dd></div>

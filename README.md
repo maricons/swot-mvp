@@ -42,13 +42,14 @@ Reglas del almacenaje de contenedores:
 - La carga **perecedera** exige un contenedor refrigerado (`20RF` o `40RF`) y su temperatura de operación; la seca puede ir en cualquier tipo.
 - No se puede mover un contenedor que no llegó, ni registrar dos veces la misma llegada o salida. Un contenedor retirado ya no se edita.
 - Los **días en patio** se cuentan desde la llegada; pasados los 5 días libres el contenedor se marca como excedido.
+- Pensado para usarlo de pie en el patio con una **tablet o un teléfono**: cada contenedor es una tarjeta grande (con filtros rápidos por estado). Al tocarla se abre su pantalla, con botones grandes para registrar la llegada, moverlo, registrar la salida o editarlo, y con su historial. En el celular las ventanas se abren desde abajo.
 
 ## Estructura
 
 ```
 backend/    API REST (Express). src/controllers, src/middlewares, src/utils, scripts/, tests/
 frontend/   Aplicación React (Vite). src/pages, src/components, src/utils
-database/   init.sql (esquema + datos de prueba), procedures.sql, upgrade_to_english.sql, upgrade_add_containers.sql, upgrade_add_maps.sql
+database/   init.sql (esquema + datos de prueba), procedures.sql, demo_otif_data.sql, upgrade_to_english.sql, upgrade_add_containers.sql, upgrade_add_maps.sql
 postman/    Colección de Postman con 110 pruebas
 ```
 
@@ -116,6 +117,16 @@ Todas usan la contraseña `hash_simulado_123`. En la pantalla de inicio hay boto
 | Operador de patio | `patio@swot.cl` |
 
 Los datos de prueba incluyen un vehículo con la revisión técnica vencida (`CD5678`) y cuatro contenedores (uno pasado de días en el patio, uno refrigerado, uno esperado y uno ya retirado) para ver las reglas y las alertas en acción.
+
+## Datos de demostración del OTIF
+
+Con los datos de prueba básicos el panel OTIF casi no tiene qué mostrar. Para verlo con historia, carga 53 OT terminadas entre marzo y septiembre de 2026 (unas atrasadas, otras incompletas, algunas fallidas, con un servicio que mejora mes a mes). Desde `backend`:
+
+```bash
+node scripts/run_sql.js ../database/demo_otif_data.sql
+```
+
+Es seguro repetirlo: no hace nada si ya hay OT anteriores al 26 de septiembre. Para quitarlas después, las instrucciones están en los comentarios del propio archivo.
 
 ## Pruebas
 
