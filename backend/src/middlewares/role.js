@@ -1,8 +1,6 @@
-module.exports = (rolesPermitidos) => {
-    return (req, res, next) => {
-        if (!rolesPermitidos.includes(req.user.rol)) {
-            return res.status(403).json({ error: 'Acceso denegado para tu rol' });
-        }
-        next();
-    };
+module.exports = (allowedRoles) => (req, res, next) => {
+    if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ error: 'Acceso denegado para tu rol' });
+    }
+    next();
 };
