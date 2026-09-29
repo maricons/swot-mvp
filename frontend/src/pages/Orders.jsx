@@ -10,14 +10,14 @@ import AlertsPanel from '../components/AlertsPanel';
 import Reveal from '../components/Reveal';
 import DonutChart from '../components/DonutChart';
 import { useToast } from '../components/Toast';
-import { STATUS_LABELS, STATUS_PLURALS, formatDate, formatDay, downloadFile } from '../utils/format';
+import { CHART, STATUS_LABELS, STATUS_PLURALS, formatDate, formatDay, downloadFile } from '../utils/format';
 
 const STATUS_COLORS = {
-    Created: '#c9d3dd',
-    Scheduled: '#8fa7d6',
-    InTransit: '#f0cf8f',
-    Delivered: '#9fd6b4',
-    Failed: '#ee9f9f',
+    Created: CHART.neutral,
+    Scheduled: CHART.scheduled,
+    InTransit: CHART.progress,
+    Delivered: CHART.success,
+    Failed: CHART.danger,
 };
 
 const EMPTY_FILTERS = { status: '', from: '', to: '' };

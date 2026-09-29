@@ -13,6 +13,7 @@ const TINY_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAf
 const created = { orders: [], products: [], drivers: [], customers: [], vehicles: [], containers: [] };
 const tokens = {};
 let server;
+let serverOutput = ''; // everything the server prints (the recovery mail goes there when no SMTP is set)
 
 // Sends a request and returns { status, body } (body is parsed JSON, or the raw type for files)
 const call = async (method, path, { token, body } = {}) => {
@@ -30,6 +31,7 @@ const futureDay = (days) => new Date(Date.now() + days * 864e5).toLocaleDateStri
 
 before(async () => {
     server = spawn('node', ['server.js'], { env: { ...process.env, PORT: '3998' }, stdio: ['ignore', 'pipe', 'inherit'] });
+    server.stdout.on('data', (d) => { serverOutput += d.toString(); });
     await new Promise((resolve) => server.stdout.on('data', (d) => d.toString().includes('API corriendo') && resolve()));
 
     tokens.dispatcher = await login('despachador@swot.cl');
@@ -48,7 +50,7 @@ after(async () => {
     }
     for (const id of created.containers) await run(`DELETE FROM container_event WHERE container_id = ${id}; DELETE FROM container WHERE id = ${id}`);
     for (const id of created.products) await run(`DELETE FROM product WHERE id = ${id}`);
-    for (const id of created.drivers) await run(`DELETE FROM truck_position WHERE driver_id = ${id}`);
+    for (const id of created.drivers) await run(`DELETE FROM password_reset WHERE user_id = ${id}; DELETE FROM truck_position WHERE driver_id = ${id}`);
     for (const id of created.drivers) await run(`DELETE FROM app_user WHERE id = ${id}`);
     for (const id of created.customers) await run(`DELETE FROM customer WHERE id = ${id}`);
     for (const id of created.vehicles) await run(`DELETE FROM vehicle WHERE id = ${id}`);
@@ -189,7 +191,23 @@ test('OTIF by month and for the whole history, alerts and exports', async () => 
     assert.ok(otif.body.total >= 1 && otif.body.otif >= 1);
     assert.ok(otif.body.series.length >= 1);
     assert.equal((await call('GET', '/otif?groupBy=all', { token: tokens.admin })).status, 200);
-    assert.equal((await call('GET', '/otif?groupBy=week', { token: tokens.admin })).status, 400);
+    assert.equal((await call('GET', '/otif?groupBy=day', { token: tokens.admin })).status, 400);
+    const weekly = (await call('GET', '/otif?groupBy=week', { token: tokens.admin })).body;
+    assert.ok(weekly.series.every((s) => new Date(s.period + 'T00:00:00').getDay() === 1), 'weeks start on Monday');
+    assert.equal(weekly.series.reduce((sum, s) => sum + s.total, 0), weekly.total);
+    assert.ok(Array.isArray(weekly.byDriver) && Array.isArray(weekly.byCustomer));
+
+    // Filters by customer, driver and month: they narrow the numbers, and bad ids are rejected
+    const all = (await call('GET', '/otif?groupBy=all', { token: tokens.admin })).body;
+    const oneCustomer = (await call('GET', '/otif?groupBy=all&customerId=1', { token: tokens.admin })).body;
+    assert.ok(oneCustomer.total >= 1 && oneCustomer.total <= all.total);
+    const oneDriver = (await call('GET', '/otif?groupBy=all&driverId=2', { token: tokens.admin })).body;
+    assert.ok(oneDriver.total >= 1 && oneDriver.total <= all.total);
+    assert.equal((await call('GET', '/otif?groupBy=all&customerId=999999', { token: tokens.admin })).body.total, 0);
+    assert.equal((await call('GET', '/otif?customerId=abc', { token: tokens.admin })).status, 400);
+    assert.equal((await call('GET', '/otif?driverId=-3', { token: tokens.admin })).status, 400);
+    const month = (await call('GET', '/otif?groupBy=all&from=2026-05-01&to=2026-05-31', { token: tokens.admin })).body;
+    assert.ok(month.total <= all.total);
 
     const alerts = await call('GET', '/alerts', { token: tokens.dispatcher });
     assert.equal(alerts.status, 200);
@@ -271,7 +289,7 @@ test('containers: announce, arrive, move and depart with history', async () => {
 test('containers: summary and alerts by service', async () => {
     const summary = await call('GET', '/containers/summary', { token: tokens.yard });
     assert.equal(summary.status, 200);
-    for (const key of ['expected', 'inYard', 'departed', 'perishableInYard', 'dryInYard', 'overstays', 'avgDaysInYard', 'freeDays']) {
+    for (const key of ['expected', 'inYard', 'departed', 'perishableInYard', 'dryInYard', 'overstays', 'avgDaysInYard']) {
         assert.ok(key in summary.body, `summary has ${key}`);
     }
 
@@ -334,4 +352,133 @@ test('maps: customer points, the driver reports the truck and the supervisor see
     const pool = await poolPromise;
     const left = await pool.request().query(`SELECT COUNT(*) AS n FROM truck_position WHERE driver_id = ${driverMade.body.id}`);
     assert.equal(left.recordset[0].n, 0);
+});
+
+// The server prints the recovery mail on its console when no SMTP is configured, so the test can read the link from there
+const lastResetToken = (email) => {
+    const mails = serverOutput.split('[mail]').filter((m) => m.includes(`to=${email}`));
+    return mails.length ? mails[mails.length - 1].match(/reset-password\?token=([a-f0-9]{64})/)?.[1] : undefined;
+};
+
+test('password recovery: one-time link, old sessions end, no way to find out who has an account', async () => {
+    const user = { name: 'ZZ Reset Driver', email: 'zz.reset.driver@swot.cl', password: 'abcd1234' };
+    const made = await call('POST', '/drivers', { token: tokens.admin, body: user });
+    created.drivers.push(made.body.id);
+    const oldToken = (await call('POST', '/auth/login', { body: { email: user.email, password: user.password } })).body.token;
+    assert.equal((await call('GET', '/my-route', { token: oldToken })).status, 200);
+
+    // The same answer for a registered and an unknown email; a bad email is rejected
+    const known = await call('POST', '/auth/forgot-password', { body: { email: user.email } });
+    const unknown = await call('POST', '/auth/forgot-password', { body: { email: 'nobody.here@swot.cl' } });
+    assert.equal(known.status, 200);
+    assert.deepEqual(unknown.body, known.body);
+    assert.equal((await call('POST', '/auth/forgot-password', { body: { email: 'not-an-email' } })).status, 400);
+    await new Promise((resolve) => setTimeout(resolve, 300)); // the mail is sent after the answer
+    assert.equal(lastResetToken('nobody.here@swot.cl'), undefined);
+    const link = lastResetToken(user.email);
+    assert.match(link, /^[a-f0-9]{64}$/);
+
+    // Bad links and bad passwords are rejected
+    assert.equal((await call('POST', '/auth/reset-password', { body: { token: 'f'.repeat(64), password: 'newpass123' } })).status, 400);
+    assert.equal((await call('POST', '/auth/reset-password', { body: { token: 'short', password: 'newpass123' } })).status, 400);
+    assert.equal((await call('POST', '/auth/reset-password', { body: { token: link, password: '123' } })).status, 400);
+
+    // Token times are in whole seconds: wait one so the session opened above is clearly older than the change
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+
+    // The link works once
+    assert.equal((await call('POST', '/auth/reset-password', { body: { token: link, password: 'newpass123' } })).status, 200);
+    assert.equal((await call('POST', '/auth/reset-password', { body: { token: link, password: 'another123' } })).status, 400);
+
+    // The old password no longer works, the new one does, and the session opened before the change is over
+    assert.equal((await call('POST', '/auth/login', { body: { email: user.email, password: user.password } })).status, 401);
+    const fresh = await call('POST', '/auth/login', { body: { email: user.email, password: 'newpass123' } });
+    assert.equal(fresh.status, 200);
+    assert.equal((await call('GET', '/my-route', { token: oldToken })).status, 401);
+    assert.equal((await call('GET', '/my-route', { token: fresh.body.token })).status, 200);
+
+    // Asking again cancels the previous link
+    await call('POST', '/auth/forgot-password', { body: { email: user.email } });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const first = lastResetToken(user.email);
+    await call('POST', '/auth/forgot-password', { body: { email: user.email } });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const second = lastResetToken(user.email);
+    assert.notEqual(first, second);
+    assert.equal((await call('POST', '/auth/reset-password', { body: { token: first, password: 'stale12345' } })).status, 400);
+});
+
+test('billing: days past the free days of each type are charged, the tariff is admin only', async () => {
+    const number = newContainerNumber();
+    const made = await call('POST', '/containers', { token: tokens.yard, body: { containerNumber: number, customerId: 1, containerType: '20DV', cargoType: 'dry' } });
+    const id = made.body.id;
+    created.containers.push(id);
+    await call('POST', `/containers/${id}/arrive`, { token: tokens.yard, body: { yardLocation: 'Z-01-1' } });
+
+    // Just arrived: inside the free days, nothing to pay
+    let detail = (await call('GET', `/containers/${id}`, { token: tokens.supervisor })).body.container;
+    assert.deepEqual([detail.freeDays, detail.billableDays, detail.charge], [5, 0, 0]);
+    const listed = (await call('GET', '/billing', { token: tokens.supervisor })).body;
+    assert.ok(!listed.containers.some((c) => c.id === id));
+
+    // 8 days in the yard with 5 free = 3 days at the 20DV rate
+    const pool = await poolPromise;
+    await pool.request().query(`UPDATE container SET arrived_at = DATEADD(DAY, -8, GETDATE()) WHERE id = ${id}`);
+    detail = (await call('GET', `/containers/${id}`, { token: tokens.supervisor })).body.container;
+    assert.deepEqual([detail.billableDays, detail.charge, detail.overstay], [3, 3 * detail.dailyRate, 1]);
+    const billing = (await call('GET', '/billing', { token: tokens.supervisor })).body;
+    const row = billing.containers.find((c) => c.id === id);
+    assert.equal(row.charge, detail.charge);
+    assert.equal(billing.byCustomer.find((c) => c.customerId === 1).charge >= detail.charge, true);
+    assert.equal(billing.total, billing.accruing + billing.closed);
+
+    // It keeps growing while inside and is final once it departed
+    await call('POST', `/containers/${id}/depart`, { token: tokens.yard });
+    const closed = (await call('GET', `/billing?status=Departed&customerId=1`, { token: tokens.admin })).body;
+    assert.equal(closed.containers.find((c) => c.id === id).charge, detail.charge);
+
+    // Exports and permissions
+    assert.equal((await call('GET', '/billing/export/excel', { token: tokens.supervisor })).status, 200);
+    assert.equal((await call('GET', '/billing/export/pdf', { token: tokens.admin })).type, 'application/pdf');
+    assert.equal((await call('GET', '/billing', { token: tokens.yard })).status, 403);
+    assert.equal((await call('GET', '/billing?status=x', { token: tokens.admin })).status, 400);
+    assert.equal((await call('GET', '/storage-rates', { token: tokens.yard })).status, 200);
+    assert.equal((await call('GET', '/storage-rates', { token: tokens.dispatcher })).status, 403);
+
+    // Tariff: only the admin edits it, with limits; here it is written back to the same values
+    const rate = (await call('GET', '/storage-rates', { token: tokens.admin })).body.find((r) => r.containerType === '20DV');
+    const put = (token, body, type = '20DV') => call('PUT', `/storage-rates/${type}`, { token, body });
+    assert.equal((await put(tokens.supervisor, rate)).status, 403);
+    assert.equal((await put(tokens.admin, { freeDays: -1, dailyRate: 100 })).status, 400);
+    assert.equal((await put(tokens.admin, { freeDays: 5, dailyRate: 'a lot' })).status, 400);
+    assert.equal((await put(tokens.admin, rate, '99XX')).status, 404);
+    assert.equal((await put(tokens.admin, { freeDays: rate.freeDays, dailyRate: rate.dailyRate })).status, 200);
+});
+
+test('predictions: the otif-risk model is better than chance, behaves sensibly and validates its input', async () => {
+    const model = (await call('GET', '/predictions/model', { token: tokens.supervisor })).body;
+    assert.ok(model.metrics.auc > 0.8 && model.metrics.accuracy > model.metrics.baselineAccuracy, 'the model beats chance and the always-no baseline on data it had not seen');
+    assert.equal(model.influence.length, 6);
+
+    const easy = { distanceKm: 10, weightKg: 300, leadDays: 7, itemCount: 1, createdHour: 9, dueOnMonday: 0 };
+    const hard = { distanceKm: 160, weightKg: 4000, leadDays: 0, itemCount: 7, createdHour: 19, dueOnMonday: 1 };
+    const risk = async (body) => (await call('POST', '/predictions/otif-risk', { token: tokens.dispatcher, body })).body;
+    const [low, high] = [await risk(easy), await risk(hard)];
+    assert.equal(low.level, 'low');
+    assert.equal(high.level, 'high');
+    assert.ok(high.probability > low.probability);
+    // Less time to deliver never lowers the risk
+    const middle = { ...easy, distanceKm: 90, weightKg: 2000, leadDays: 4, itemCount: 4 };
+    assert.ok((await risk({ ...middle, leadDays: 2 })).probability > (await risk(middle)).probability);
+
+    assert.equal((await call('POST', '/predictions/otif-risk', { token: tokens.dispatcher, body: { ...easy, weightKg: 'heavy' } })).status, 400);
+    assert.equal((await call('POST', '/predictions/otif-risk', { token: tokens.dispatcher, body: { ...easy, createdHour: 30 } })).status, 400);
+    assert.equal((await call('POST', '/predictions/otif-risk', { token: tokens.driver, body: easy })).status, 403);
+
+    // Open orders come with a risk, highest first
+    const open = await call('GET', '/predictions/open-orders', { token: tokens.dispatcher });
+    assert.equal(open.status, 200);
+    open.body.forEach((o) => assert.ok(o.probability >= 0 && o.probability <= 1 && ['low', 'medium', 'high'].includes(o.level)));
+    assert.deepEqual(open.body.map((o) => o.probability), open.body.map((o) => o.probability).sort((a, b) => b - a));
+    assert.equal((await call('GET', '/predictions/open-orders', { token: tokens.yard })).status, 403);
 });

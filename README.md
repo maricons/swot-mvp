@@ -1,56 +1,207 @@
-# SWOT · Sistema Web de Órdenes de Transporte
+<div align="center">
 
-Proyecto de práctica personal (caso ficticio **Neo Tech Logística**, un operador logístico de carga seca y perecedera). El sistema tiene **dos servicios**:
+# 🚚 SWOT · Sistema Web de Órdenes de Transporte
 
-- **Transporte:** los despachadores planifican órdenes de transporte (OT), los conductores registran cada entrega desde el celular con la foto de la guía firmada, y los supervisores ven los indicadores al día.
-- **Almacenaje de contenedores:** el operador de patio registra cuándo llega cada contenedor, dónde queda, cuándo se mueve y cuándo sale, con alertas por exceso de días en el patio.
+**Transporte de carga y almacenaje de contenedores en un solo sistema**, con OTIF, mapas en vivo, cobros y un modelo de IA.
 
-**Stack:** React 19 + Vite · Node.js + Express 5 · SQL Server (procedimientos almacenados) · JWT
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white&labelColor=20232a)
+![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-24_LTS-339933?logo=nodedotjs&logoColor=white)
+![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)
+![SQL Server](https://img.shields.io/badge/SQL_Server-2022-CC2927?logo=microsoftsqlserver&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-SQL_Server-2496ED?logo=docker&logoColor=white)
+![JWT](https://img.shields.io/badge/Auth-JWT_%2B_bcrypt-000000?logo=jsonwebtokens&logoColor=white)
+![Leaflet](https://img.shields.io/badge/Mapas-Leaflet_%2B_OpenStreetMap-199900?logo=leaflet&logoColor=white)
 
-## Qué hace
+![Pruebas](https://img.shields.io/badge/pruebas_del_backend-18_pasan-2f7a53)
+![Postman](https://img.shields.io/badge/Postman-133_peticiones_·_166_verificaciones-FF6C37?logo=postman&logoColor=white)
+![IA](https://img.shields.io/badge/IA-regresión_logística_(datos_simulados)-8a6418)
+![Estado](https://img.shields.io/badge/estado-proyecto_de_práctica-3d5a99)
+
+[Capturas](#capturas) · [Roles](#qué-puede-hacer-cada-rol) · [Arquitectura](#arquitectura) · [Puesta en marcha](#puesta-en-marcha) · [Documentación](docs/)
+
+</div>
+
+---
+
+Proyecto de práctica personal (caso ficticio **Neo Tech Logística**, un operador logístico de carga seca y perecedera). Un solo sistema para dos servicios:
+
+- 🚚 **Transporte:** los despachadores planifican órdenes de transporte (OT), los conductores registran cada entrega desde el celular con la foto de la guía firmada, y los supervisores ven los indicadores (OTIF), la flota en el mapa y el riesgo de incumplimiento de cada OT.
+- 📦 **Almacenaje de contenedores:** el operador de patio registra cuándo llega cada contenedor, dónde queda, cuándo se mueve y cuándo sale; el sistema **cobra los días que pasan de los días libres** y avisa de los excedidos.
+
+
+## Contenido
+
+1. [Capturas](#capturas)
+2. [Qué puede hacer cada rol](#qué-puede-hacer-cada-rol)
+3. [Reglas de negocio](#reglas-de-negocio)
+4. [Arquitectura](#arquitectura)
+5. [Estructura del repositorio](#estructura-del-repositorio)
+6. [Puesta en marcha](#puesta-en-marcha)
+7. [Pruebas](#pruebas)
+8. [Copias de seguridad](#copias-de-seguridad)
+9. [Seguridad](#seguridad)
+10. [API](#api)
+11. [Si ya tenías una base de datos](#si-ya-tenías-una-base-de-datos)
+
+## Capturas
+
+### Inicio de sesión y navegación
+
+| Inicio de sesión | Recuperar contraseña (la tarjeta gira) |
+|:--:|:--:|
+| ![Inicio de sesión](docs/screenshots/01-login.png) | ![Recuperar contraseña](docs/screenshots/11-recuperar.png) |
+
+| Menú en el computador (un desplegable por área) | Menú en el celular |
+|:--:|:--:|
+| ![Menú de escritorio](docs/screenshots/09-menu-escritorio.png) | <img src="docs/screenshots/10-menu-movil.png" width="300" alt="Menú móvil"> |
+
+### Transporte
+
+| Órdenes del despachador | Ruta del conductor (celular) |
+|:--:|:--:|
+| ![Órdenes](docs/screenshots/02-ordenes.png) | <img src="docs/screenshots/03-ruta-conductor.png" width="300" alt="Ruta del conductor"> |
+
+| Flota en ruta | Indicador OTIF con filtros y rankings |
+|:--:|:--:|
+| ![Flota](docs/screenshots/04-flota.png) | ![OTIF](docs/screenshots/05-otif.png) |
+
+### Predicción con IA
+
+![Predicciones](docs/screenshots/06-predicciones.png)
+
+### Almacenaje
+
+| Contenedores (tablet) | Cobros |
+|:--:|:--:|
+| <img src="docs/screenshots/07-contenedores.png" width="380" alt="Contenedores"> | ![Cobros](docs/screenshots/08-cobros.png) |
+
+## Qué puede hacer cada rol
 
 | Rol | Puede |
 |---|---|
-| **Despachador** | Crear OT (cliente, fecha comprometida, productos), programarlas asignando vehículo y conductor, filtrarlas y exportarlas a Excel o PDF |
+| **Despachador** | Crear OT (cliente, fecha comprometida, productos), programarlas asignando vehículo y conductor, filtrarlas y exportarlas a Excel o PDF; ver el riesgo de incumplir el OTIF de las OT abiertas |
 | **Conductor** | Ver su hoja de ruta con un **mapa de sus próximas paradas** y un enlace "Cómo llegar", iniciar la ruta y registrar la entrega con el **RUT de quien recibe** y la **foto de la guía firmada** (o marcarla como fallida, con confirmación) |
-| **Supervisor** | Ver órdenes, clientes, vehículos, conductores y productos (solo lectura), el **mapa de la flota en ruta**, el **indicador OTIF por mes o de todo el historial** y las alertas |
-| **Administrador** | Lo del supervisor, más crear, editar y desactivar clientes, vehículos, conductores y productos, y gestionar los contenedores |
+| **Supervisor** | Ver órdenes, clientes, vehículos, conductores y productos (solo lectura), el **mapa de la flota en ruta**, el **OTIF**, las **predicciones**, las alertas, los contenedores y los **cobros** de almacenaje |
+| **Administrador** | Lo del supervisor, más crear, editar y desactivar clientes, vehículos, conductores y productos, gestionar los contenedores y **cambiar la tarifa** de almacenaje |
 | **Operador de patio** | Anunciar contenedores, registrar su llegada, moverlos de posición y registrar su salida; ver el panel del patio y sus alertas |
 
-Reglas de negocio que valida el sistema:
+Cualquier usuario puede **recuperar su contraseña** desde el inicio de sesión (ver [reglas](#recuperar-la-contraseña)).
+
+## Reglas de negocio
+
+### Transporte
 
 - Flujo de estados: `Creada → Programada → En ruta → Entregada` o `Fallida`. El conductor solo puede avanzar sus propias OT y solo en ese orden.
 - No se programa un camión **sin capacidad** para el peso de la OT ni con la **revisión técnica vencida** (error 409).
 - El **peso de la OT se calcula** con los productos (cantidad × peso por presentación); solo se escribe a mano cuando algún producto no tiene peso definido.
 - Una entrega exige un **RUT válido** (con dígito verificador) y la foto de la guía firmada.
 - Los registros se **desactivan**, no se borran, para conservar el historial. Un usuario desactivado pierde el acceso al instante.
-- **OTIF** (On Time In Full): porcentaje de OT entregadas a tiempo y completas. Una OT fallida cuenta como no cumplida.
-- **Alertas:** revisiones técnicas que vencen en 30 días (o ya vencidas) y OT atrasadas; contenedores con más de 5 días en el patio y contenedores con la salida prevista vencida. Cada rol ve solo las alertas de su servicio.
 
-Mapas y seguimiento de la flota:
+### OTIF
 
-- Cada cliente puede tener un **punto de entrega** en el mapa (latitud y longitud), que el administrador marca haciendo clic en el mapa al crear o editar el cliente. Las OT de un cliente sin punto se listan igual, pero no aparecen en el mapa.
-- **Conductor:** ve sus paradas numeradas en el orden de entrega (la que está en ruta se destaca), su propia posición y una línea que las une. Cada tarjeta trae "Cómo llegar", que abre Google Maps con la ruta.
-- **Ubicación del camión:** mientras el conductor tiene una OT **en ruta**, su celular informa dónde está (con permiso del navegador) como máximo cada 30 segundos. Solo se guarda la **última posición**, y se borra apenas termina su última entrega en ruta. Nunca se guarda un historial de recorridos.
-- **Supervisor y administrador:** la pantalla **Flota** muestra un mapa con cada camión en ruta, su destino y la señal más reciente; se actualiza sola cada 20 segundos. Un camión sin señal hace más de 10 minutos se ve en gris.
-- Los mapas usan [OpenStreetMap](https://www.openstreetmap.org/copyright) (necesitan internet para cargar el fondo). Los navegadores de celular solo entregan la ubicación en páginas **HTTPS** (o en `localhost`), así que para probarlo en un teléfono real hay que servir el frontend por HTTPS.
+**On Time In Full:** porcentaje de OT entregadas a la fecha comprometida o antes **y** completas. Una OT fallida cuenta como no cumplida. Se ve **por semana** (las últimas 12, o las de un mes elegido), **por mes** o **de todo el historial**, y se filtra por **un mes en particular, cliente y conductor**. Debajo, dos rankings muestran el OTIF de **cada conductor** y de **cada cliente** (verde desde 90 %, ámbar desde 70 %). Se exporta a PDF con los filtros aplicados.
 
-Reglas del almacenaje de contenedores:
+### Mapas y flota
+
+- Cada cliente puede tener un **punto de entrega** en el mapa, que el administrador marca con un clic al crear o editar el cliente. Las OT de un cliente sin punto se listan igual, pero no salen en el mapa.
+- **Conductor:** ve sus paradas numeradas en el orden de entrega, su propia posición y una línea que las une. Cada tarjeta trae "Cómo llegar" (abre Google Maps).
+- **Ubicación del camión:** mientras el conductor tiene una OT **en ruta**, su celular informa dónde está (con permiso del navegador) como máximo cada 30 segundos. Solo se guarda la **última posición**, y se borra apenas termina su última entrega. Nunca se guarda un historial de recorridos.
+- **Supervisor y administrador:** la pantalla **Flota** muestra cada camión en ruta, su destino y la señal más reciente; se actualiza sola cada 20 segundos. Un camión sin señal hace más de 10 minutos se ve en gris.
+- Los mapas usan [OpenStreetMap](https://www.openstreetmap.org/copyright) (necesitan internet). Los navegadores de celular solo entregan la ubicación en páginas **HTTPS** (o `localhost`), así que para probar en un teléfono real hay que servir el frontend por HTTPS.
+
+### Almacenaje de contenedores
 
 - Flujo: `Esperado → En patio → Retirado`. Cada llegada, movimiento y salida queda en el historial con fecha, hora y usuario.
-- El número del contenedor sigue la norma **ISO 6346** (4 letras, 6 números y un dígito verificador que se valida), por ejemplo `MSCU 123456-6`.
+- El número sigue la norma **ISO 6346** (4 letras, 6 números y un dígito verificador que se valida), por ejemplo `MSCU 123456-6`.
 - La carga **perecedera** exige un contenedor refrigerado (`20RF` o `40RF`) y su temperatura de operación; la seca puede ir en cualquier tipo.
 - No se puede mover un contenedor que no llegó, ni registrar dos veces la misma llegada o salida. Un contenedor retirado ya no se edita.
-- Los **días en patio** se cuentan desde la llegada; pasados los 5 días libres el contenedor se marca como excedido.
-- Pensado para usarlo de pie en el patio con una **tablet o un teléfono**: cada contenedor es una tarjeta grande (con filtros rápidos por estado). Al tocarla se abre su pantalla, con botones grandes para registrar la llegada, moverlo, registrar la salida o editarlo, y con su historial. En el celular las ventanas se abren desde abajo.
+- Pensado para usarlo de pie en el patio con una **tablet o un teléfono**: cada contenedor es una tarjeta grande; al tocarla se abre su pantalla con botones grandes para cada acción y su historial.
 
-## Estructura
+### Cobro de almacenaje
+
+Cada tipo de contenedor tiene **días libres** y una **tarifa diaria** (en pesos). Desde la llegada al patio corren los días; los que pasan de los libres se cobran:
+
+`cobro = max(0, días en patio − días libres del tipo) × tarifa diaria`
+
+| Tipo | Días libres | Tarifa por día |
+|---|---|---|
+| 20DV · 20' estándar | 5 | $12.000 |
+| 40DV · 40' estándar | 5 | $20.000 |
+| 40HC · 40' High Cube | 5 | $22.000 |
+| 20RF · 20' refrigerado | 3 | $35.000 |
+| 40RF · 40' refrigerado | 3 | $55.000 |
+
+- Un contenedor **en patio** suma un día más cada jornada (se ve "y subiendo"); al **retirarlo** el cobro queda final.
+- La pantalla **Cobros** (supervisor y administrador) muestra el total, lo que sigue subiendo y lo ya cerrado, el detalle **por cliente y por contenedor**, filtros por cliente y estado, y exporta a **Excel y PDF**.
+- Solo el **administrador** edita la tarifa. Como el cobro se calcula al consultar (no se guarda), un cambio de tarifa se aplica a todos los contenedores.
+- Las cifras de la tabla son de ejemplo (viven en la tabla `storage_rate`).
+
+### Alertas
+
+Revisiones técnicas que vencen en 30 días (o ya vencidas), OT atrasadas, contenedores **pasados de sus días libres** (con lo que llevan de cobro) y contenedores con la salida prevista vencida. Cada rol ve solo las de su servicio.
+
+### Recuperar la contraseña
+
+Desde el inicio de sesión, "¿Olvidaste tu contraseña?" pide el correo y envía un **enlace de un solo uso que vence en 30 minutos**.
+
+- La respuesta es la misma exista o no el correo, para no revelar quién tiene cuenta.
+- El enlace solo se guarda como *hash*; pedir uno nuevo anula el anterior.
+- Al cambiar la contraseña, **las sesiones abiertas antes quedan cerradas**.
+- Sin configuración de correo, el mensaje **se imprime en la consola del backend** (sirve para probar). Para enviarlo de verdad, completa `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` y `MAIL_FROM` en `backend/.env` (el enlace usa `FRONTEND_URL`) (ver `.env.example`).
+
+### Predicción de incumplimiento OTIF (IA)
+
+Un modelo de **regresión logística** estima la probabilidad de que una OT abierta **no cumpla su OTIF** (llegue atrasada **o** incompleta), a partir de la distancia al cliente, el peso, el plazo, la cantidad de productos, la hora de creación y si se entrega un lunes. La pantalla **Predicciones** muestra la tarjeta del modelo, un simulador «¿y si…?» y las OT abiertas de mayor a menor riesgo.
+
+- Se eligió ese objetivo (y no solo «atraso») porque es **exactamente el KPI que mide la empresa** y se puede calcular con datos que el sistema ya guarda: cuando haya historial real se reentrena sin cambiar nada.
+- Con datos simulados detecta ~2 de cada 3 incumplimientos y, revisando solo el 20 % de OT de mayor riesgo, atrapa casi la mitad de las fallas (AUC ≈ 0,85; responder siempre «cumple» acierta 73 %).
+- El modelo se entrena con **datos simulados**: sirve para demostrar la técnica, no para decidir. El análisis completo, con las fases de **CRISP-DM**, está en [docs/modelo-ia.md](docs/modelo-ia.md). Para reentrenarlo: `npm run train` en `backend`.
+
+## Arquitectura
+
+```mermaid
+flowchart LR
+    FE["Frontend<br/>React 19 + Vite<br/>mapas Leaflet"] -- "HTTP/JSON<br/>Bearer JWT" --> API
+    subgraph API["Backend · Express 5"]
+        direction TB
+        MW["Seguridad<br/>helmet · CORS · límites · JWT + rol"] --> RT["routes.js"] --> CT["controllers/"]
+        CT --> ML["ml/<br/>modelo OTIF"]
+    end
+    CT -- "consultas parametrizadas<br/>y procedimientos almacenados" --> DB[("SQL Server 2022<br/>(Docker)")]
+    CT -. "recuperar contraseña" .-> SMTP["Correo SMTP<br/>(opcional)"]
+```
+
+Un monolito de tres capas, sin ORM ni colas: el frontend muestra y valida lo básico; el backend decide permisos y reglas; la base garantiza la integridad (restricciones `CHECK` y procedimientos almacenados transaccionales). Los roles y el estado activo se leen de la base **en cada petición**, no del token. Explicación completa, modelo de datos y flujos en **[docs/arquitectura.md](docs/arquitectura.md)**.
+
+## Estructura del repositorio
 
 ```
-backend/    API REST (Express). src/controllers, src/middlewares, src/utils, scripts/, tests/
-frontend/   Aplicación React (Vite). src/pages, src/components, src/utils
-database/   init.sql (esquema + datos de prueba), procedures.sql, demo_otif_data.sql, upgrade_to_english.sql, upgrade_add_containers.sql, upgrade_add_maps.sql
-postman/    Colección de Postman con 110 pruebas
+swot-mvp/
+├── backend/
+│   ├── server.js            Arranque: helmet, CORS, límites, monta /api
+│   ├── src/
+│   │   ├── routes.js        Cada ruta con los roles que pueden usarla
+│   │   ├── config/          Conexión a la base y regla de días libres / cobro
+│   │   ├── middlewares/     auth, role, limiters
+│   │   ├── controllers/     Un archivo por tema: order, container, billing, otif, ...
+│   │   └── utils/           Validaciones (RUT, patente, ISO 6346), PDF, correo
+│   ├── ml/                  Modelo de IA: model.js, train.js y model.json entrenado
+│   ├── scripts/             run_sql.js (ejecuta .sql) y backup.js
+│   └── tests/               Pruebas automáticas de punta a punta
+├── frontend/src/
+│   ├── pages/               Una pantalla por ruta
+│   ├── components/          Modales, gráficos, mapas, barra superior
+│   ├── hooks/               Ubicación del conductor
+│   ├── services/            Cliente HTTP
+│   └── utils/               Etiquetas en español, RUT, dinero, fechas
+├── database/
+│   ├── init.sql             Esquema completo + datos de prueba
+│   ├── procedures.sql       Procedimientos almacenados
+│   ├── upgrades/            Migraciones para una base que ya existe
+│   └── demo/                Datos de demostración (OTIF)
+├── docs/                    Arquitectura, modelo de IA y capturas
+└── postman/                 Colección con 133 peticiones
 ```
 
 ## Puesta en marcha
@@ -116,14 +267,14 @@ Todas usan la contraseña `hash_simulado_123`. En la pantalla de inicio hay boto
 | Administrador | `admin@swot.cl` |
 | Operador de patio | `patio@swot.cl` |
 
-Los datos de prueba incluyen un vehículo con la revisión técnica vencida (`CD5678`) y cuatro contenedores (uno pasado de días en el patio, uno refrigerado, uno esperado y uno ya retirado) para ver las reglas y las alertas en acción.
+Los datos de prueba incluyen un vehículo con la revisión técnica vencida (`CD5678`) y cuatro contenedores (uno pasado de días en el patio, uno refrigerado, uno esperado y uno ya retirado) para ver las reglas, las alertas y los cobros en acción.
 
-## Datos de demostración del OTIF
+### Datos de demostración del OTIF
 
-Con los datos de prueba básicos el panel OTIF casi no tiene qué mostrar. Para verlo con historia, carga 53 OT terminadas entre marzo y septiembre de 2026 (unas atrasadas, otras incompletas, algunas fallidas, con un servicio que mejora mes a mes). Desde `backend`:
+Con los datos básicos el panel OTIF casi no tiene qué mostrar. Para verlo con historia, carga 53 OT terminadas entre marzo y septiembre de 2026 (unas atrasadas, otras incompletas, algunas fallidas, con un servicio que mejora mes a mes). Desde `backend`:
 
 ```bash
-node scripts/run_sql.js ../database/demo_otif_data.sql
+node scripts/run_sql.js ../database/demo/demo_otif_data.sql
 ```
 
 Es seguro repetirlo: no hace nada si ya hay OT anteriores al 26 de septiembre. Para quitarlas después, las instrucciones están en los comentarios del propio archivo.
@@ -137,18 +288,21 @@ cd backend
 npm test
 ```
 
-Son 15 pruebas. Cubren login, permisos por rol, inyección SQL, RUT y patentes, conductores, productos, cálculo de peso, reglas de programación, prueba de entrega, OTIF, alertas, exportaciones todo el ciclo de un contenedor (anuncio, llegada, movimiento, salida e historial) y los mapas (puntos de entrega, posición del camión y flota).
+Son 18 pruebas: login y permisos por rol, inyección SQL, RUT y patentes, conductores, productos, cálculo de peso, reglas de programación, prueba de entrega, OTIF (semanas, filtros y rankings), alertas, exportaciones, el ciclo completo de un contenedor, los mapas, la **recuperación de contraseña** (enlace de un solo uso, sesiones anteriores cerradas), el **cobro de almacenaje** (días libres, tarifa, exportaciones) y el **modelo de predicción** (que supere a la respuesta ingenua).
 
-**Colección de Postman:** importa `postman/SWOT.postman_collection.json` y ejecútala completa con el Collection Runner (con el backend en `http://localhost:3000/api`). Son 110 peticiones con 131 verificaciones, que recorren el flujo completo de una OT y de un contenedor con los 5 roles y comprueban los errores de permisos, validación y seguridad. Por línea de comandos: `npx newman run postman/SWOT.postman_collection.json`. Como incluye intentos de login fallidos a propósito, no la ejecutes dos veces seguidas en menos de 2 minutos (el límite de intentos respondería 429); tampoco borra lo que crea, así que limpia esos registros de prueba si la corres contra tu base real (los contenedores de la colección empiezan con `PMNU`).
+**Colección de Postman:** importa `postman/SWOT.postman_collection.json` y ejecútala completa con el Collection Runner (con el backend en `http://localhost:3000/api`). Son 133 peticiones con 166 verificaciones que recorren el flujo de una OT y de un contenedor con los 5 roles y comprueban permisos, validación y seguridad. Por línea de comandos: `npx newman run postman/SWOT.postman_collection.json`.
+
+- Incluye intentos de login fallidos a propósito y pedidos de recuperación de contraseña, que tienen límite: **no la ejecutes dos veces seguidas en menos de 2 minutos** (respondería 429).
+- No borra lo que crea: si la corres contra tu base real, limpia esos registros (clientes y productos que empiezan con `Postman`, conductores `postman.…@swot.cl`, contenedores `PMNU…` y vehículos con revisión al 2030-01-01).
 
 **Pruebas manuales en la interfaz** (recorrido de la demo):
 
-1. Como despachador: crear una OT con un producto con peso (el peso sale calculado), con fecha comprometida, y programarla con el camión `AB1234`. Probar el camión `CD5678` para ver el error de revisión técnica.
+1. Como despachador: crear una OT con un producto con peso (el peso sale calculado), con fecha comprometida, y programarla con el camión `AB1234`. Probar `CD5678` para ver el error de revisión técnica. Abrir **Predicciones** y ver su riesgo.
 2. Como conductor (en modo celular de las DevTools): iniciar la ruta y entregar con RUT y foto.
-3. Como supervisor: abrir el detalle de la OT (guía firmada e historial), el **OTIF** por mes y de todo el historial, y exportar a PDF.
+3. Como supervisor: abrir el detalle de la OT, el **OTIF** (probar los filtros), la **Flota** y exportar a PDF. Con una OT programada a un cliente con punto en el mapa, aceptar el permiso de ubicación del conductor y ver el camión en el mapa (en las DevTools, *Sensors* simula una ubicación).
 4. Como administrador: crear un cliente (el RUT se formatea solo), un conductor y un producto con foto.
-5. Como conductor, con un OT programada a un cliente con punto en el mapa: iniciar la ruta y aceptar el permiso de ubicación; como supervisor, abrir **Flota** y ver el camión en el mapa. (En el navegador, las DevTools permiten simular una ubicación en *Sensors*.)
-6. Como operador de patio (o cambiando a **Almacenaje** como administrador): anunciar un contenedor refrigerado, registrar su llegada, moverlo y registrar su salida; abrir el detalle para ver el historial.
+5. Como operador de patio (o cambiando a **Almacenaje** como administrador): anunciar un contenedor refrigerado, registrar su llegada, moverlo y registrar su salida. Abrir **Cobros** y ver el contenedor de demostración pasado de plazo; como administrador, cambiar una tarifa.
+6. Desde el inicio de sesión, usar "¿Olvidaste tu contraseña?" y abrir el enlace que aparece en la consola del backend.
 
 ## Copias de seguridad
 
@@ -171,35 +325,43 @@ docker exec swot-sql /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "TuClav
 ## Seguridad
 
 - Contraseñas con **bcrypt**; consultas parametrizadas y procedimientos almacenados (sin SQL armado con texto del usuario).
-- **Límite de intentos** de inicio de sesión: 5 fallidos cada 2 minutos por IP (no bloquea la cuenta).
+- **Límite de intentos** de inicio de sesión (5 fallidos cada 2 minutos por IP; no bloquea la cuenta) y de recuperación de contraseña.
+- Recuperación con enlace de un solo uso, con vencimiento, guardado solo como *hash*, y que cierra las sesiones anteriores.
 - `helmet`, CORS limitado al frontend, tamaño máximo de las peticiones y validación de todos los datos de entrada.
-- Permisos por rol en cada ruta, y el rol y el estado activo se leen de la base en cada petición.
+- Permisos por rol en cada ruta; el rol, el estado activo y la fecha de cambio de contraseña se leen de la base en cada petición.
 - Los errores internos se registran en el servidor y no se muestran al usuario.
+- Los secretos viven en `backend/.env`, que **no se sube a Git**.
 
-## API (resumen)
+## API
 
-`POST /api/auth/login` · `/api/orders` (listar, crear, `/:id`, `/:id/schedule`, `/:id/status`, `/export/excel`, `/export/pdf`) · `/api/my-route` · `/api/customers` · `/api/vehicles` · `/api/drivers` · `/api/products` (listar, crear, editar y `/:id/active`) · `/api/otif` (`?groupBy=month|all`, `/export/pdf`) · `/api/alerts` · `/api/fleet` · `/api/my-route/position` · `/api/containers` (listar, crear, `/summary`, `/:id`, editar, `/:id/arrive`, `/:id/move`, `/:id/depart`)
+Todas van bajo `/api`, con `Authorization: Bearer <token>` salvo el login y la recuperación.
+
+| Tema | Rutas | Quién |
+|---|---|---|
+| Sesión | `POST /auth/login` · `POST /auth/forgot-password` · `POST /auth/reset-password` | Público |
+| Órdenes | `GET/POST /orders` · `GET /orders/:id` · `PATCH /orders/:id/schedule` · `PATCH /orders/:id/status` · `GET /orders/export/excel` · `/export/pdf` | Despachador, supervisor, administrador (el conductor cambia el estado de las suyas) |
+| Ruta del conductor | `GET /my-route` · `POST /my-route/position` | Conductor |
+| Flota | `GET /fleet` | Supervisor, administrador |
+| Catálogos | `/customers` · `/vehicles` · `/drivers` · `/products` (listar, crear, editar y `PATCH /:id/active`) | Leen todos menos el conductor; escribe el administrador |
+| OTIF | `GET /otif` (`groupBy=week\|month\|all`, `from`, `to`, `customerId`, `driverId`) · `GET /otif/export/pdf` | Supervisor, administrador |
+| Predicciones | `GET /predictions/model` · `GET /predictions/open-orders` · `POST /predictions/otif-risk` | Despachador, supervisor, administrador |
+| Contenedores | `GET/POST /containers` · `GET /containers/summary` · `GET/PUT /containers/:id` · `POST /containers/:id/arrive` · `/move` · `/depart` | Patio y administrador escriben; supervisor lee |
+| Cobros | `GET /billing` (`customerId`, `status`) · `GET /billing/export/excel` · `/export/pdf` | Supervisor, administrador |
+| Tarifa | `GET /storage-rates` · `PUT /storage-rates/:type` | Leen patio, supervisor y administrador; edita el administrador |
+| Alertas | `GET /alerts` | Todos menos el conductor |
 
 Los códigos de estado y roles son en inglés en la base y la API (`Created`, `Scheduled`, `InTransit`, `Delivered`, `Failed`; `Expected`, `InYard`, `Departed`; `dispatcher`, `driver`, `admin`, `supervisor`, `yard`); las pantallas los muestran en español.
 
 ## Si ya tenías una base de datos
 
-Para agregarle el servicio de almacenaje de contenedores (rol de patio, tablas y contenedores de prueba), ejecuta una vez desde `backend`:
+Ejecuta desde `backend` solo lo que te falte (todas son seguras de repetir, salvo la primera, que es de una sola vez):
 
-```bash
-node scripts/run_sql.js ../database/upgrade_add_containers.sql ../database/procedures.sql
-```
+| Para agregar | Comando |
+|---|---|
+| Renombrar las tablas en español a inglés | `node scripts/run_sql.js ../database/upgrades/upgrade_to_english.sql ../database/procedures.sql` |
+| Almacenaje de contenedores (rol de patio, tablas y datos de prueba) | `node scripts/run_sql.js ../database/upgrades/upgrade_add_containers.sql ../database/procedures.sql` |
+| Mapas (punto de cada cliente y posición de los camiones) | `node scripts/run_sql.js ../database/upgrades/upgrade_add_maps.sql ../database/procedures.sql` |
+| Recuperar contraseña | `node scripts/run_sql.js ../database/upgrades/upgrade_add_password_reset.sql ../database/procedures.sql` |
+| Cobro de almacenaje (tarifa por tipo) | `node scripts/run_sql.js ../database/upgrades/upgrade_add_billing.sql` |
 
-Para agregar los mapas (punto de entrega de cada cliente y posición de los camiones):
-
-```bash
-node scripts/run_sql.js ../database/upgrade_add_maps.sql ../database/procedures.sql
-```
-
-### Si las tablas estaban en español
-
-Ejecuta una sola vez (desde `backend`) la migración que renombra todo a inglés y agrega las columnas de prueba de entrega:
-
-```bash
-node scripts/run_sql.js ../database/upgrade_to_english.sql ../database/procedures.sql
-```
+Ese es también el orden en que se fueron agregando. Una base nueva no necesita ninguno: `init.sql` ya lo trae todo.

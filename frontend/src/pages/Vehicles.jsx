@@ -4,7 +4,7 @@ import VehicleModal from '../components/VehicleModal';
 import DonutChart from '../components/DonutChart';
 import AlertsPanel from '../components/AlertsPanel';
 import Reveal from '../components/Reveal';
-import { formatDay } from '../utils/format';
+import { CHART, formatDay } from '../utils/format';
 
 const columns = [
     { header: 'Patente', cell: (v) => <strong>{v.plate}</strong> },
@@ -47,8 +47,8 @@ const overview = (vehicles, loading) => {
                         loading={loading}
                         totalLabel="vehículos"
                         data={[
-                            { label: 'Vigentes', color: '#9fd6b4', count: valid },
-                            { label: 'Vencidas', color: '#ee9f9f', count: vehicles.length - valid },
+                            { label: 'Vigentes', color: CHART.success, count: valid },
+                            { label: 'Vencidas', color: CHART.danger, count: vehicles.length - valid },
                         ]}
                     />
                 </Reveal>

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import ContainerStatusBadge from './ContainerStatusBadge';
-import { CARGO_LABELS, CONTAINER_TYPES, EVENT_LABELS, formatContainerNumber, formatDay, formatDateTime } from '../utils/format';
+import { CARGO_LABELS, CONTAINER_TYPES, EVENT_LABELS, formatContainerNumber, formatDay, formatDateTime, formatMoney } from '../utils/format';
 
 const typeLabel = (code) => (CONTAINER_TYPES.find(([c]) => c === code) || [code, code])[1];
 
@@ -66,6 +66,15 @@ function ContainerDetailModal({ containerId, canWrite, onClose, onAction }) {
                             <div className="detail-item"><dt>Salió</dt><dd>{c.departedAt ? formatDateTime(c.departedAt) : '—'}</dd></div>
                             {c.daysInYard != null && (
                                 <div className="detail-item"><dt>Días en el patio</dt><dd>{c.daysInYard}</dd></div>
+                            )}
+                            {c.arrivedAt && (
+                                <>
+                                    <div className="detail-item"><dt>Días libres</dt><dd>{c.freeDays} · después {formatMoney(c.dailyRate)} por día</dd></div>
+                                    <div className="detail-item">
+                                        <dt>{c.status === 'InYard' ? 'Cobro hasta hoy' : 'Cobro final'}</dt>
+                                        <dd>{c.charge > 0 ? <strong className="flag">{formatMoney(c.charge)} · {c.billableDays} {c.billableDays === 1 ? 'día' : 'días'} a cobrar</strong> : 'Sin cobro'}</dd>
+                                    </div>
+                                </>
                             )}
                             {c.notes && <div className="detail-item"><dt>Notas</dt><dd>{c.notes}</dd></div>}
                         </dl>

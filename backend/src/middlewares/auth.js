@@ -18,8 +18,13 @@ module.exports = async (req, res, next) => {
         const pool = await poolPromise;
         const { recordset } = await pool.request()
             .input('id', sql.Int, payload.id)
-            .query('SELECT role, IsActive FROM app_user WHERE id = @id');
+            .query('SELECT role, IsActive, password_changed_at FROM app_user WHERE id = @id');
         if (!recordset[0]?.IsActive) return res.status(401).json({ error: 'Cuenta desactivada' });
+        // A token issued before the last password change is no longer valid (iat is in seconds)
+        const changedAt = recordset[0].password_changed_at;
+        if (changedAt && payload.iat < Math.floor(changedAt.getTime() / 1000)) {
+            return res.status(401).json({ error: 'Tu contraseña cambió: inicia sesión de nuevo' });
+        }
         req.user = { id: payload.id, role: recordset[0].role };
         next();
     } catch (error) {

@@ -1,6 +1,6 @@
 -- SWOT: full schema and test data for a fresh install.
 -- Create the database first (CREATE DATABASE swot_db;), then run this file and procedures.sql.
--- An existing database with the old Spanish tables uses upgrade_to_english.sql instead.
+-- An existing database with the old Spanish tables uses upgrades/upgrade_to_english.sql instead.
 USE swot_db;
 GO
 
@@ -12,7 +12,19 @@ CREATE TABLE app_user (
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL,
     IsActive BIT NOT NULL CONSTRAINT df_app_user_IsActive DEFAULT 1,
+    password_changed_at DATETIME NULL,   -- sessions started before this moment are no longer valid
     CONSTRAINT ck_app_user_role CHECK (role IN ('dispatcher', 'driver', 'admin', 'supervisor', 'yard'))
+);
+
+-- Password recovery: one row per link sent by email. Only the SHA-256 hash of the token is stored,
+-- so a leaked database cannot be used to reset anyone's password. Each link works once and expires.
+CREATE TABLE password_reset (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    user_id INT NOT NULL FOREIGN KEY REFERENCES app_user(id),
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    expires_at DATETIME NOT NULL,
+    used_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT GETDATE()
 );
 
 -- 2. Customers (companies). tax_id is the Chilean RUT
@@ -132,6 +144,17 @@ CREATE TABLE container_event (
     notes VARCHAR(255) NULL,
     user_id INT NULL FOREIGN KEY REFERENCES app_user(id)
 );
+GO
+
+-- 11. Storage tariff per container type: days included for free, then a daily rate (CLP) for every extra day in the yard
+CREATE TABLE storage_rate (
+    container_type VARCHAR(4) NOT NULL PRIMARY KEY,
+    free_days INT NOT NULL CHECK (free_days BETWEEN 0 AND 60),
+    daily_rate INT NOT NULL CHECK (daily_rate BETWEEN 0 AND 1000000),
+    CONSTRAINT fk_storage_rate_type CHECK (container_type IN ('20DV', '40DV', '40HC', '20RF', '40RF'))
+);
+INSERT INTO storage_rate (container_type, free_days, daily_rate) VALUES
+('20DV', 5, 12000), ('40DV', 5, 20000), ('40HC', 5, 22000), ('20RF', 3, 35000), ('40RF', 3, 55000);
 GO
 
 -- TEST DATA (every user's password is hash_simulado_123, stored with bcrypt)

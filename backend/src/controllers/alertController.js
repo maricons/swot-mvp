@@ -1,5 +1,5 @@
 const { poolPromise } = require('../config/db');
-const { FREE_DAYS } = require('../config/storage');
+const { RATE_JOIN, BILLABLE_DAYS } = require('../config/storage');
 const { internalError } = require('../utils/validate');
 
 const INSPECTION_WARNING_DAYS = 30;
@@ -36,9 +36,10 @@ exports.getAlerts = async (req, res) => {
                  ORDER BY o.due_date`),
             run(wants.storage,
                 `SELECT c.id, c.container_number AS containerNumber, cu.name AS customerName, c.yard_location AS yardLocation,
-                        DATEDIFF(DAY, c.arrived_at, GETDATE()) AS daysInYard
-                 FROM container c JOIN customer cu ON cu.id = c.customer_id
-                 WHERE c.status = 'InYard' AND DATEDIFF(DAY, c.arrived_at, GETDATE()) > ${FREE_DAYS}
+                        DATEDIFF(DAY, c.arrived_at, GETDATE()) AS daysInYard, r.free_days AS freeDays,
+                        ${BILLABLE_DAYS} * r.daily_rate AS charge
+                 FROM container c JOIN customer cu ON cu.id = c.customer_id ${RATE_JOIN}
+                 WHERE c.status = 'InYard' AND ${BILLABLE_DAYS} > 0
                  ORDER BY c.arrived_at`),
             run(wants.storage,
                 `SELECT c.id, c.container_number AS containerNumber, cu.name AS customerName, c.status,
@@ -49,7 +50,7 @@ exports.getAlerts = async (req, res) => {
                  ORDER BY c.planned_departure`),
         ]);
 
-        res.json({ vehicles, overdueOrders, overstayContainers, overdueContainers, freeDays: FREE_DAYS });
+        res.json({ vehicles, overdueOrders, overstayContainers, overdueContainers });
     } catch (error) {
         internalError(res, error);
     }

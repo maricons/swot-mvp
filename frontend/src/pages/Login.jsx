@@ -23,20 +23,34 @@ function Login() {
     const [flipped, setFlipped] = useState(false);
     const [resetEmail, setResetEmail] = useState('');
     const [resetSent, setResetSent] = useState(false);
+    const [resetError, setResetError] = useState('');
+    const [resetSending, setResetSending] = useState(false);
     const navigate = useNavigate();
 
     // Show the notice once: it is cleared after the first render
     useEffect(() => sessionStorage.removeItem('loginNotice'), []);
 
-    // Visual only: no email is sent yet
-    const handleReset = (e) => {
+    // Asks the server to email a recovery link. The answer is the same whether the email is registered or not
+    const handleReset = async (e) => {
         e.preventDefault();
-        setResetSent(true);
+        setResetError('');
+        setResetSending(true);
+        try {
+            await api.post('/auth/forgot-password', { email: resetEmail });
+            setResetSent(true);
+        } catch (err) {
+            setResetError(err.response?.data?.error || 'No se pudo enviar la solicitud');
+        } finally {
+            setResetSending(false);
+        }
     };
 
     const flip = (toBack) => {
         setFlipped(toBack);
-        if (!toBack) setResetSent(false);
+        if (!toBack) {
+            setResetSent(false);
+            setResetError('');
+        }
     };
 
     const handleLogin = async (e) => {
@@ -118,7 +132,7 @@ function Login() {
 
                     {resetSent ? (
                         <p className="reset-note">
-                            Si <strong>{resetEmail}</strong> está registrado, te enviaremos un correo con el detalle para restablecer tu contraseña.
+                            Si <strong>{resetEmail}</strong> está registrado, te enviamos un correo con un enlace para restablecer tu contraseña. Vence en 30 minutos.
                         </p>
                     ) : (
                         <>
@@ -129,7 +143,10 @@ function Login() {
                                     <input className="input" type="email" value={resetEmail}
                                         onChange={(e) => setResetEmail(e.target.value)} required />
                                 </div>
-                                <button className="btn btn-light btn-block" type="submit">Enviar</button>
+                                {resetError && <div className="error-box">{resetError}</div>}
+                                <button className="btn btn-light btn-block" type="submit" disabled={resetSending}>
+                                    {resetSending ? 'Enviando…' : 'Enviar'}
+                                </button>
                             </form>
                         </>
                     )}

@@ -1,7 +1,7 @@
 -- Demo data to see the OTIF screen with something to show: 53 finished orders from March to
 -- September 2026 whose service improves over the months (some late, some incomplete, a few failed).
 -- Safe to run more than once: it does nothing if there are already orders before 2026-09-26.
--- Run it from the backend folder:  node scripts/run_sql.js ../database/demo_otif_data.sql
+-- Run it from the backend folder:  node scripts/run_sql.js ../database/demo/demo_otif_data.sql
 --
 -- To remove it later (real orders are all created after 2026-09-26):
 --   DELETE FROM order_history WHERE order_id IN (SELECT id FROM transport_order WHERE created_at < '2026-09-26');

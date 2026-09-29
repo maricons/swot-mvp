@@ -10,9 +10,9 @@ import ContainerModal from '../components/ContainerModal';
 import ContainerEventModal from '../components/ContainerEventModal';
 import ContainerDetailModal from '../components/ContainerDetailModal';
 import { useToast } from '../components/Toast';
-import { CARGO_LABELS, CONTAINER_STATUS_LABELS, formatContainerNumber, formatDate, formatDay } from '../utils/format';
+import { CARGO_LABELS, CHART, CONTAINER_STATUS_LABELS, formatContainerNumber, formatDate, formatDay, formatMoney } from '../utils/format';
 
-const STATUS_COLORS = { InYard: '#9fd6b4', Expected: '#8fa7d6', Departed: '#c9d3dd' };
+const STATUS_COLORS = { InYard: CHART.progress, Expected: CHART.neutral, Departed: CHART.scheduled };
 const EMPTY_FILTERS = { status: '', cargoType: '', search: '' };
 
 // Second line of a card: how long it has been in the yard, when it is expected, or when it left
@@ -68,7 +68,7 @@ function Containers() {
         ['Esperados', summary?.expected],
         ['Perecederos en patio', summary?.perishableInYard],
         ['Días promedio en patio', summary ? Number(summary.avgDaysInYard).toLocaleString('es-CL', { maximumFractionDigits: 1 }) : null],
-        [`Pasados de ${summary?.freeDays ?? 5} días`, summary?.overstays],
+        ['Con sobreestadía', summary?.overstays],
         ['Retirados', summary?.departed],
     ];
 
@@ -165,7 +165,7 @@ function Containers() {
                                     </div>
                                     <div className="cc-foot">
                                         <span>{footText(c)}</span>
-                                        {c.overstay ? <span className="flag">⚠ Pasado de plazo</span> : null}
+                                        {c.charge > 0 ? <span className="flag">💲 {formatMoney(c.charge)}{c.status === 'InYard' && ' y subiendo'}</span> : null}
                                         {c.departureOverdue ? <span className="flag">⏰ Salida vencida</span> : null}
                                     </div>
                                 </article>

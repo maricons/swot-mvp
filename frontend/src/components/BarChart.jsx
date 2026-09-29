@@ -1,9 +1,10 @@
 // src/components/BarChart.jsx
 import { useCallback, useRef, useState } from 'react';
+import { CHART } from '../utils/format';
 
 // Bar chart in plain SVG for percentages (0-100) over time.
 // data = [{ label, value (0-100 or null), detail }]. Bars with a null value are drawn as an empty slot.
-function BarChart({ title, data, loading, color = '#8fa7d6', emptyText = 'Sin datos para graficar.' }) {
+function BarChart({ title, data, loading, color = CHART.progress, emptyText = 'Sin datos para graficar.' }) {
     const [active, setActive] = useState(null);
     const observerRef = useRef(null);
     const [available, setAvailable] = useState(320);

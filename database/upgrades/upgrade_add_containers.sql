@@ -2,7 +2,7 @@
 -- the yard operator role and user, the container and container_event tables and some demo containers.
 -- A fresh install does NOT need this file: init.sql already has all of it.
 -- Run it from the backend folder, then load the procedures:
---   node scripts/run_sql.js ../database/upgrade_add_containers.sql ../database/procedures.sql
+--   node scripts/run_sql.js ../database/upgrades/upgrade_add_containers.sql ../database/procedures.sql
 USE swot_db;
 GO
 

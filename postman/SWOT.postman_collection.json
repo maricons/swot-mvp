@@ -369,6 +369,139 @@
               ]
             }
           }
+        },
+        {
+          "name": "Password recovery: not an email (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"not-an-email\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "forgot-password"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Password recovery: unknown email gets the same answer as a real one (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('does not reveal whether the account exists', () => pm.expect(pm.response.json().message).to.include('Si el correo'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nobody.postman@swot.cl\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "forgot-password"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Password recovery: a made-up link does not work (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\",\n  \"password\": \"newpass123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "reset-password"
+              ]
+            }
+          }
         }
       ]
     },
@@ -3250,7 +3383,166 @@
           }
         },
         {
-          "name": "OTIF with an invalid grouping, weeks are not supported (400)",
+          "name": "OTIF filtered by customer and driver",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the filtered total is a number', () => pm.expect(pm.response.json().total).to.be.a('number'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{supervisorToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/otif?groupBy=all&customerId=1&driverId=2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "otif"
+              ],
+              "query": [
+                {
+                  "key": "groupBy",
+                  "value": "all"
+                },
+                {
+                  "key": "customerId",
+                  "value": "1"
+                },
+                {
+                  "key": "driverId",
+                  "value": "2"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "OTIF by week with the rankings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('has weeks and rankings', () => { const o = pm.response.json(); pm.expect(o.series).to.be.an('array'); pm.expect(o.byDriver).to.be.an('array'); pm.expect(o.byCustomer).to.be.an('array'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{supervisorToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/otif?groupBy=week",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "otif"
+              ],
+              "query": [
+                {
+                  "key": "groupBy",
+                  "value": "week"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "OTIF for one month",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{supervisorToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/otif?groupBy=month&from=2026-09-01&to=2026-09-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "otif"
+              ],
+              "query": [
+                {
+                  "key": "groupBy",
+                  "value": "month"
+                },
+                {
+                  "key": "from",
+                  "value": "2026-09-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-09-30"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "OTIF with an invalid customer (400)",
           "event": [
             {
               "listen": "test",
@@ -3280,7 +3572,54 @@
               ]
             },
             "url": {
-              "raw": "{{baseUrl}}/otif?groupBy=week",
+              "raw": "{{baseUrl}}/otif?customerId=abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "otif"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "abc"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "OTIF with an invalid grouping (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/otif?groupBy=day",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -3290,7 +3629,7 @@
               "query": [
                 {
                   "key": "groupBy",
-                  "value": "week"
+                  "value": "day"
                 }
               ]
             }
@@ -3698,7 +4037,7 @@
               "script": {
                 "exec": [
                   "pm.test('status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('has the yard numbers', () => { const s = pm.response.json(); ['expected', 'inYard', 'departed', 'overstays', 'freeDays'].forEach((k) => pm.expect(s).to.have.property(k)); });"
+                  "pm.test('has the yard numbers', () => { const s = pm.response.json(); ['expected', 'inYard', 'departed', 'overstays'].forEach((k) => pm.expect(s).to.have.property(k)); });"
                 ]
               }
             }
@@ -5416,6 +5755,760 @@
               ],
               "path": [
                 "fleet"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Storage billing",
+      "item": [
+        {
+          "name": "Billing: totals add up (supervisor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('total = accruing + closed', () => { const b = pm.response.json(); pm.expect(b.total).to.eql(b.accruing + b.closed); pm.expect(b.byCustomer).to.be.an('array'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{supervisorToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/billing",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Billing: only containers still in the yard",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('all in the yard', () => pm.response.json().containers.forEach((c) => pm.expect(c.status).to.eql('InYard')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/billing?status=InYard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "InYard"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Billing: invalid status (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/billing?status=Expected",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "Expected"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Billing to Excel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('is an Excel file', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('spreadsheetml'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{supervisorToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/billing/export/excel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing",
+                "export",
+                "excel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Billing to PDF",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('is a PDF file', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{supervisorToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/billing/export/pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing",
+                "export",
+                "pdf"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The yard operator cannot see the billing (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{yardToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/billing",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The tariff has one row per container type",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('5 types', () => pm.expect(pm.response.json()).to.have.lengthOf(5));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{yardToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/storage-rates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "storage-rates"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The supervisor cannot change the tariff (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{supervisorToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"freeDays\": 5,\n  \"dailyRate\": 12000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/storage-rates/20DV",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "storage-rates",
+                "20DV"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tariff with a negative rate (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"freeDays\": 5,\n  \"dailyRate\": -1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/storage-rates/20DV",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "storage-rates",
+                "20DV"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tariff for an unknown type (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"freeDays\": 5,\n  \"dailyRate\": 12000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/storage-rates/99XX",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "storage-rates",
+                "99XX"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. OTIF-miss prediction",
+      "item": [
+        {
+          "name": "Model card",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('better than chance', () => pm.expect(pm.response.json().metrics.auc).to.be.above(0.8));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{supervisorToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/predictions/model",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "predictions",
+                "model"
+              ]
+            }
+          }
+        },
+        {
+          "name": "What-if: a far, heavy, last-minute order is high risk of missing OTIF",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('high risk', () => pm.expect(pm.response.json().level).to.eql('high'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{dispatcherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"distanceKm\": 160,\n  \"weightKg\": 4000,\n  \"leadDays\": 0,\n  \"itemCount\": 7,\n  \"createdHour\": 19,\n  \"dueOnMonday\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/predictions/otif-risk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "predictions",
+                "otif-risk"
+              ]
+            }
+          }
+        },
+        {
+          "name": "What-if: a near, light, planned order is low risk",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('low risk', () => pm.expect(pm.response.json().level).to.eql('low'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{dispatcherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"distanceKm\": 10,\n  \"weightKg\": 300,\n  \"leadDays\": 7,\n  \"itemCount\": 1,\n  \"createdHour\": 9,\n  \"dueOnMonday\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/predictions/otif-risk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "predictions",
+                "otif-risk"
+              ]
+            }
+          }
+        },
+        {
+          "name": "What-if with a missing value (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{dispatcherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"distanceKm\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/predictions/otif-risk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "predictions",
+                "otif-risk"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Open orders ranked by risk",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('highest first', () => { const p = pm.response.json().map((o) => o.probability); pm.expect(p).to.eql([...p].sort((a, b) => b - a)); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{dispatcherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/predictions/open-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "predictions",
+                "open-orders"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The driver cannot see predictions (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{driverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/predictions/open-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "predictions",
+                "open-orders"
               ]
             }
           }

@@ -2,7 +2,7 @@
 -- (latitude and longitude) and the table with the last known position of each truck.
 -- A fresh install does NOT need this file: init.sql already has all of it.
 -- Run it from the backend folder, then load the procedures:
---   node scripts/run_sql.js ../database/upgrade_add_maps.sql ../database/procedures.sql
+--   node scripts/run_sql.js ../database/upgrades/upgrade_add_maps.sql ../database/procedures.sql
 USE swot_db;
 GO
 

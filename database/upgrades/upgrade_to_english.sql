@@ -3,7 +3,7 @@
 -- delivery proof columns (signed guide photo + receiver RUT). A fresh install does NOT need this
 -- file: init.sql already creates the final schema.
 -- Safe to run more than once. Run it from the backend folder, then load the procedures:
---   node scripts/run_sql.js ../database/upgrade_to_english.sql ../database/procedures.sql
+--   node scripts/run_sql.js ../database/upgrades/upgrade_to_english.sql ../database/procedures.sql
 USE swot_db;
 GO
 

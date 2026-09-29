@@ -1,3 +1,6 @@
+// Chart colors, matching the status badges: green = done, indigo = moving, amber = warning, red = failed, slate = neutral
+export const CHART = { success: '#4caf72', progress: '#4c6ef5', warning: '#f2b33d', danger: '#d64545', neutral: '#c4ccd6', scheduled: '#7ab8c9' };
+
 // Status and role codes are English in the database and the API; the screens show them in Spanish
 export const STATUS_LABELS = {
     Created: 'Creada', Scheduled: 'Programada', InTransit: 'En ruta', Delivered: 'Entregada', Failed: 'Fallida',
@@ -25,6 +28,9 @@ export const formatContainerNumber = (number) => (number ? `${number.slice(0, 4)
 
 // Formats as the user types: keeps letters and digits, upper case, up to 11 characters
 export const formatContainerInput = (value) => formatContainerNumber(value.replace(/[^0-9a-zA-Z]/g, '').toUpperCase().slice(0, 11)).replace(/[ -]+$/, '');
+
+// 36000 -> "$36.000" (Chilean pesos)
+export const formatMoney = (amount) => `$${Number(amount).toLocaleString('es-CL')}`;
 
 // "2027-12-31" -> "31-12-2027" (dates without time come as text from the API, so no time zone can shift them)
 export const formatDay = (day) => (day ? day.split('-').reverse().join('-') : '—');
