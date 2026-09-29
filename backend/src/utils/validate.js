@@ -32,6 +32,27 @@ const normalizePlate = (text) => {
     return /^([A-Z]{2}\d{4}|[A-Z]{4}\d{2})$/.test(clean) ? clean : null;
 };
 
+// ISO 6346 container number: 4 letters (owner code + category), 6 digits and a check digit.
+// Letter values start at 10 and skip the multiples of 11; each character is weighted by 2^position.
+const letterValue = (letter) => {
+    let value = 10;
+    for (const candidate of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
+        if (value % 11 === 0) value++;
+        if (candidate === letter) return value;
+        value++;
+    }
+    return 0;
+};
+
+// Returns the number without spaces or hyphens in upper case, or null when it is not a valid ISO 6346 number
+const normalizeContainerNumber = (text) => {
+    if (typeof text !== 'string') return null;
+    const clean = text.replace(/[\s-]/g, '').toUpperCase();
+    if (!/^[A-Z]{3}[UJZ]\d{7}$/.test(clean)) return null;
+    const sum = [...clean.slice(0, 10)].reduce((total, char, i) => total + (/\d/.test(char) ? Number(char) : letterValue(char)) * 2 ** i, 0);
+    return (sum % 11) % 10 === Number(clean[10]) ? clean : null;
+};
+
 const isDate = (text) => typeof text === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(text) && !Number.isNaN(Date.parse(text));
 const isPositiveInt = (value) => Number.isInteger(value) && value > 0;
 const isText = (value, max) => typeof value === 'string' && value.trim().length > 0 && value.trim().length <= max;
@@ -47,5 +68,5 @@ const internalError = (res, error) => {
 };
 
 module.exports = {
-    normalizeTaxId, normalizePlate, isDate, isPositiveInt, isText, isImage, internalError,
+    normalizeTaxId, normalizePlate, normalizeContainerNumber, isDate, isPositiveInt, isText, isImage, internalError,
 };

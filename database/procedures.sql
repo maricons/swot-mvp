@@ -93,3 +93,67 @@ BEGIN
     COMMIT;
 END;
 GO
+
+-- 4. Announce a container (creates it as Expected and records the first event)
+CREATE OR ALTER PROCEDURE sp_create_container
+    @container_number VARCHAR(11),
+    @customer_id INT,
+    @container_type VARCHAR(4),
+    @cargo_type VARCHAR(10),
+    @temperature_c DECIMAL(4,1) = NULL,
+    @seal_number VARCHAR(20) = NULL,
+    @expected_arrival DATE = NULL,
+    @planned_departure DATE = NULL,
+    @notes VARCHAR(255) = NULL,
+    @user_id INT
+AS
+BEGIN
+    SET XACT_ABORT ON;
+    DECLARE @container_id INT;
+
+    BEGIN TRAN;
+
+    INSERT INTO container (container_number, customer_id, container_type, cargo_type, temperature_c, seal_number,
+                           expected_arrival, planned_departure, notes)
+    VALUES (@container_number, @customer_id, @container_type, @cargo_type, @temperature_c, @seal_number,
+            @expected_arrival, @planned_departure, @notes);
+
+    SET @container_id = SCOPE_IDENTITY();
+
+    INSERT INTO container_event (container_id, event_type, user_id) VALUES (@container_id, 'Announced', @user_id);
+
+    COMMIT;
+
+    SELECT @container_id AS container_id;
+END;
+GO
+
+-- 5. Arrival, move inside the yard, or departure of a container (the API checks the allowed transitions)
+CREATE OR ALTER PROCEDURE sp_register_container_event
+    @container_id INT,
+    @event_type VARCHAR(10),
+    @yard_location VARCHAR(20) = NULL,
+    @seal_number VARCHAR(20) = NULL,
+    @notes VARCHAR(255) = NULL,
+    @user_id INT
+AS
+BEGIN
+    SET XACT_ABORT ON;
+    BEGIN TRAN;
+
+    IF @event_type = 'Arrived'
+        UPDATE container
+        SET status = 'InYard', arrived_at = GETDATE(), yard_location = @yard_location,
+            seal_number = COALESCE(@seal_number, seal_number)
+        WHERE id = @container_id;
+    ELSE IF @event_type = 'Moved'
+        UPDATE container SET yard_location = @yard_location WHERE id = @container_id;
+    ELSE IF @event_type = 'Departed'
+        UPDATE container SET status = 'Departed', departed_at = GETDATE(), yard_location = NULL WHERE id = @container_id;
+
+    INSERT INTO container_event (container_id, event_type, yard_location, notes, user_id)
+    VALUES (@container_id, @event_type, @yard_location, @notes, @user_id);
+
+    COMMIT;
+END;
+GO
