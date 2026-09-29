@@ -98,7 +98,7 @@ function DriverRoute() {
                                         <button className="btn btn-success" onClick={() => setDelivering(order)}>Entregar</button>
                                         <button className="btn btn-danger" disabled={updating === order.id}
                                             onClick={() => setFailing(order)}>
-                                            Fallida
+                                            Reportar falla
                                         </button>
                                     </>
                                 )}

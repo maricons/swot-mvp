@@ -10,9 +10,9 @@ import ContainerModal from '../components/ContainerModal';
 import ContainerEventModal from '../components/ContainerEventModal';
 import ContainerDetailModal from '../components/ContainerDetailModal';
 import { useToast } from '../components/Toast';
-import { CARGO_LABELS, CONTAINER_STATUS_LABELS, formatContainerNumber, formatDate, formatDay, formatMoney } from '../utils/format';
+import { CARGO_LABELS, CHART, CONTAINER_STATUS_LABELS, formatContainerNumber, formatDate, formatDay, formatMoney } from '../utils/format';
 
-const STATUS_COLORS = { InYard: '#9fd6b4', Expected: '#8fa7d6', Departed: '#c9d3dd' };
+const STATUS_COLORS = { InYard: CHART.progress, Expected: CHART.neutral, Departed: CHART.scheduled };
 const EMPTY_FILTERS = { status: '', cargoType: '', search: '' };
 
 // Second line of a card: how long it has been in the yard, when it is expected, or when it left

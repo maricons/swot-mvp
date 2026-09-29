@@ -19,7 +19,7 @@ const FEATURE_LABELS = {
     distanceKm: 'Distancia', weightKg: 'Peso', leadDays: 'Días de plazo', itemCount: 'Cantidad de productos',
     createdHour: 'Hora de creación', dueOnMonday: 'Entrega el lunes',
 };
-const LEVELS = { low: ['Riesgo bajo', 'badge-delivered'], medium: ['Riesgo medio', 'badge-in-transit'], high: ['Riesgo alto', 'badge-failed'] };
+const LEVELS = { low: ['Riesgo bajo', 'badge-delivered'], medium: ['Riesgo medio', 'badge-warning'], high: ['Riesgo alto', 'badge-failed'] };
 const DEFAULT_ORDER = { distanceKm: 40, weightKg: 1500, leadDays: 3, itemCount: 3, createdHour: 10, dueOnMonday: 0 };
 
 const pct = (n) => `${Math.round(n * 100)}%`;

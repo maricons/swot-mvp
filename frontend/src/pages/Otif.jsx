@@ -6,7 +6,7 @@ import Reveal from '../components/Reveal';
 import DonutChart from '../components/DonutChart';
 import BarChart from '../components/BarChart';
 import { useToast } from '../components/Toast';
-import { downloadFile } from '../utils/format';
+import { CHART, downloadFile } from '../utils/format';
 
 const WEEKS_SHOWN = 12;
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -24,7 +24,7 @@ const weekLabel = (period) => {
 };
 
 // Best and worst first: OTIF % of each driver or customer, with how many orders it is based on
-const RANK_COLORS = (pct) => (pct >= 90 ? '#9fd6b4' : pct >= 70 ? '#f2d58a' : '#ee9f9f');
+const RANK_COLORS = (pct) => (pct >= 90 ? CHART.success : pct >= 70 ? CHART.warning : CHART.danger);
 function Ranking({ title, rows, loading }) {
     const ranked = rows.map((r) => ({ ...r, pct: Math.round((r.otif / r.total) * 100) })).sort((a, b) => b.pct - a.pct || b.total - a.total);
     return (
@@ -176,8 +176,8 @@ function Otif() {
                             loading={loading}
                             totalLabel="OT medidas"
                             data={[
-                                { label: 'OTIF', color: '#9fd6b4', count: stats?.otif ?? 0 },
-                                { label: 'No cumplen', color: '#ee9f9f', count: total - (stats?.otif ?? 0) },
+                                { label: 'OTIF', color: CHART.success, count: stats?.otif ?? 0 },
+                                { label: 'No cumplen', color: CHART.danger, count: total - (stats?.otif ?? 0) },
                             ]}
                         />
                     </Reveal>

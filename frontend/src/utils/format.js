@@ -1,3 +1,6 @@
+// Chart colors, matching the status badges: green = done, indigo = moving, amber = warning, red = failed, slate = neutral
+export const CHART = { success: '#4caf72', progress: '#4c6ef5', warning: '#f2b33d', danger: '#d64545', neutral: '#c4ccd6', scheduled: '#7ab8c9' };
+
 // Status and role codes are English in the database and the API; the screens show them in Spanish
 export const STATUS_LABELS = {
     Created: 'Creada', Scheduled: 'Programada', InTransit: 'En ruta', Delivered: 'Entregada', Failed: 'Fallida',
