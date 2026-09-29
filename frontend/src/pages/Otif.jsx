@@ -20,21 +20,52 @@ const monthLabel = (period) => {
 function Otif() {
     const [stats, setStats] = useState(null);
     const [range, setRange] = useState({ from: '', to: '' });
+    const [who, setWho] = useState({ customerId: '', driverId: '' });
+    const [month, setMonth] = useState(''); // "2026-09" when a whole month is picked
+    const [customers, setCustomers] = useState([]);
+    const [drivers, setDrivers] = useState([]);
     const [groupBy, setGroupBy] = useState('month');
     const toast = useToast();
 
+    // The lists for the customer and driver filters
     useEffect(() => {
-        api.get('/otif', { params: { ...range, groupBy } })
+        Promise.all([api.get('/customers'), api.get('/drivers')])
+            .then(([c, d]) => {
+                setCustomers(c.data);
+                setDrivers(d.data);
+            })
+            .catch(() => toast('No se pudieron cargar los filtros', 'error'));
+    }, [toast]);
+
+    useEffect(() => {
+        api.get('/otif', { params: { ...range, ...who, groupBy } })
             .then((res) => setStats(res.data))
             .catch(() => toast('No se pudo cargar el indicador', 'error'));
-    }, [range, groupBy, toast]);
+    }, [range, who, groupBy, toast]);
 
     const exportPdf = async () => {
         try {
-            await downloadFile(api, '/otif/export/pdf', { ...range, groupBy }, `otif-${new Date().toLocaleDateString('en-CA')}.pdf`);
+            await downloadFile(api, '/otif/export/pdf', { ...range, ...who, groupBy }, `otif-${new Date().toLocaleDateString('en-CA')}.pdf`);
         } catch {
             toast('No se pudo exportar el indicador', 'error');
         }
+    };
+
+    // Picking a month fills the date range with its first and last day
+    const pickMonth = (value) => {
+        setMonth(value);
+        if (!value) return setRange({ from: '', to: '' });
+        const [year, monthNumber] = value.split('-').map(Number);
+        setRange({ from: `${value}-01`, to: new Date(year, monthNumber, 0).toLocaleDateString('en-CA') });
+    };
+    const changeRange = (part) => {
+        setMonth('');
+        setRange({ ...range, ...part });
+    };
+    const clearFilters = () => {
+        setMonth('');
+        setRange({ from: '', to: '' });
+        setWho({ customerId: '', driverId: '' });
     };
 
     const loading = !stats;
@@ -78,16 +109,32 @@ function Otif() {
                             </div>
                         </div>
                         <div className="field">
-                            <label>Fecha comprometida desde</label>
-                            <input className="input" type="date" value={range.from}
-                                onChange={(e) => setRange({ ...range, from: e.target.value })} />
+                            <label>Un mes en particular</label>
+                            <input className="input" type="month" value={month} onChange={(e) => pickMonth(e.target.value)} />
+                        </div>
+                        <div className="field">
+                            <label>Desde</label>
+                            <input className="input" type="date" value={range.from} onChange={(e) => changeRange({ from: e.target.value })} />
                         </div>
                         <div className="field">
                             <label>Hasta</label>
-                            <input className="input" type="date" value={range.to}
-                                onChange={(e) => setRange({ ...range, to: e.target.value })} />
+                            <input className="input" type="date" value={range.to} onChange={(e) => changeRange({ to: e.target.value })} />
                         </div>
-                        <button className="btn btn-ghost" onClick={() => setRange({ from: '', to: '' })}>Limpiar</button>
+                        <div className="field">
+                            <label>Cliente</label>
+                            <select className="input" value={who.customerId} onChange={(e) => setWho({ ...who, customerId: e.target.value })}>
+                                <option value="">Todos</option>
+                                {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="field">
+                            <label>Conductor</label>
+                            <select className="input" value={who.driverId} onChange={(e) => setWho({ ...who, driverId: e.target.value })}>
+                                <option value="">Todos</option>
+                                {drivers.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                            </select>
+                        </div>
+                        <button className="btn btn-ghost" onClick={clearFilters}>Limpiar</button>
                     </div>
                 </Reveal>
 

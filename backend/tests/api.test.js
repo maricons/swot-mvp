@@ -191,6 +191,18 @@ test('OTIF by month and for the whole history, alerts and exports', async () => 
     assert.equal((await call('GET', '/otif?groupBy=all', { token: tokens.admin })).status, 200);
     assert.equal((await call('GET', '/otif?groupBy=week', { token: tokens.admin })).status, 400);
 
+    // Filters by customer, driver and month: they narrow the numbers, and bad ids are rejected
+    const all = (await call('GET', '/otif?groupBy=all', { token: tokens.admin })).body;
+    const oneCustomer = (await call('GET', '/otif?groupBy=all&customerId=1', { token: tokens.admin })).body;
+    assert.ok(oneCustomer.total >= 1 && oneCustomer.total <= all.total);
+    const oneDriver = (await call('GET', '/otif?groupBy=all&driverId=2', { token: tokens.admin })).body;
+    assert.ok(oneDriver.total >= 1 && oneDriver.total <= all.total);
+    assert.equal((await call('GET', '/otif?groupBy=all&customerId=999999', { token: tokens.admin })).body.total, 0);
+    assert.equal((await call('GET', '/otif?customerId=abc', { token: tokens.admin })).status, 400);
+    assert.equal((await call('GET', '/otif?driverId=-3', { token: tokens.admin })).status, 400);
+    const month = (await call('GET', '/otif?groupBy=all&from=2026-05-01&to=2026-05-31', { token: tokens.admin })).body;
+    assert.ok(month.total <= all.total);
+
     const alerts = await call('GET', '/alerts', { token: tokens.dispatcher });
     assert.equal(alerts.status, 200);
     assert.ok(alerts.body.vehicles.some((v) => v.plate === 'ZZ9999')); // inspection expires in 10 days

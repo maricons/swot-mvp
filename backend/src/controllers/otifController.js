@@ -1,5 +1,5 @@
 const { sql, poolPromise } = require('../config/db');
-const { isDate, internalError } = require('../utils/validate');
+const { isDate, isPositiveInt, internalError } = require('../utils/validate');
 const { sendTablePdf, formatDay } = require('../utils/pdf');
 
 // OTIF = On Time In Full. Universe: orders with a promised date that finished (delivered or failed).
@@ -22,8 +22,12 @@ const COUNTS = `COUNT(*) AS total,
 const computeOtif = async (req, res) => {
     const { from, to } = req.query;
     const groupBy = req.query.groupBy || 'month';
-    if ((from && !isDate(from)) || (to && !isDate(to)) || !GROUPINGS.includes(groupBy)) {
-        res.status(400).json({ error: 'Parámetros no válidos (fechas AAAA-MM-DD, groupBy month o all)' });
+    // Optional filters by customer and by driver (ids arrive as text in the query string)
+    const customerId = req.query.customerId ? Number(req.query.customerId) : null;
+    const driverId = req.query.driverId ? Number(req.query.driverId) : null;
+    if ((from && !isDate(from)) || (to && !isDate(to)) || !GROUPINGS.includes(groupBy)
+        || (customerId !== null && !isPositiveInt(customerId)) || (driverId !== null && !isPositiveInt(driverId))) {
+        res.status(400).json({ error: 'Parámetros no válidos (fechas AAAA-MM-DD, groupBy month o all, ids numéricos)' });
         return null;
     }
 
@@ -39,6 +43,14 @@ const computeOtif = async (req, res) => {
             request.input('to', sql.Date, to);
             where += ' AND due_date <= @to';
         }
+        if (customerId) {
+            request.input('customerId', sql.Int, customerId);
+            where += ' AND customer_id = @customerId';
+        }
+        if (driverId) {
+            request.input('driverId', sql.Int, driverId);
+            where += ' AND driver_id = @driverId';
+        }
 
         const summary = await request.query(`SELECT ${COUNTS} FROM transport_order WHERE ${where}`);
         // The monthly series is only needed when grouping by month
@@ -47,7 +59,11 @@ const computeOtif = async (req, res) => {
              FROM transport_order WHERE ${where}
              GROUP BY ${MONTH} ORDER BY ${MONTH}`
         ) : { recordset: [] };
-        return { summary: summary.recordset[0], series: series.recordset, groupBy, from, to };
+        // The names of the filters, for the title of the PDF
+        const names = await pool.request().input('customerId', sql.Int, customerId).input('driverId', sql.Int, driverId).query(
+            `SELECT (SELECT name FROM customer WHERE id = @customerId) AS customerName, (SELECT name FROM app_user WHERE id = @driverId) AS driverName`
+        );
+        return { summary: summary.recordset[0], series: series.recordset, groupBy, from, to, ...names.recordset[0] };
     } catch (error) {
         internalError(res, error);
         return null;
@@ -64,12 +80,13 @@ const percent = (part, total) => (total ? `${Math.round((part / total) * 100)}%`
 exports.exportPdf = async (req, res) => {
     const result = await computeOtif(req, res);
     if (!result) return;
-    const { summary, series, groupBy, from, to } = result;
+    const { summary, series, groupBy, from, to, customerName, driverName } = result;
 
     const row = (label, r) => ({
         period: label, total: r.total, onTime: percent(r.onTime, r.total), inFull: percent(r.inFull, r.total), otif: percent(r.otif, r.total),
     });
-    const filters = [from && `Desde: ${formatDay(from)}`, to && `Hasta: ${formatDay(to)}`].filter(Boolean).join('  ·  ');
+    const filters = [from && `Desde: ${formatDay(from)}`, to && `Hasta: ${formatDay(to)}`, customerName && `Cliente: ${customerName}`, driverName && `Conductor: ${driverName}`]
+        .filter(Boolean).join('  ·  ');
 
     sendTablePdf(res, {
         filename: `otif-${new Date().toISOString().slice(0, 10)}.pdf`,
