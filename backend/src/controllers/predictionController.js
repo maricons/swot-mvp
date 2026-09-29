@@ -1,5 +1,5 @@
 const { poolPromise } = require('../config/db');
-const { DEPOT, FEATURES, haversineKm, predict, loadModel } = require('../../ml/model');
+const { DEPOT, THRESHOLD, FEATURES, haversineKm, predict, loadModel } = require('../../ml/model');
 const { internalError } = require('../utils/validate');
 
 const model = loadModel();
@@ -7,7 +7,7 @@ const model = loadModel();
 // Allowed range of each what-if value (the same span the model was trained on, a bit wider)
 const LIMITS = { distanceKm: [0, 500], weightKg: [1, 30000], leadDays: [0, 60], itemCount: [1, 200], createdHour: [0, 23], dueOnMonday: [0, 1] };
 
-const level = (p) => (p >= 0.7 ? 'high' : p >= 0.4 ? 'medium' : 'low');
+const level = (p) => (p >= 0.7 ? 'high' : p >= THRESHOLD ? 'medium' : 'low');
 const risk = (order) => {
     const probability = predict(model, order);
     return { probability: Math.round(probability * 100) / 100, level: level(probability) };
@@ -17,14 +17,14 @@ const risk = (order) => {
 exports.getModel = (req, res) => {
     const { trainedOn, samples, trainSize, testSize, metrics, weights, features } = model;
     res.json({
-        trainedOn, samples, trainSize, testSize, metrics,
+        trainedOn, samples, trainSize, testSize, metrics, threshold: model.threshold,
         // Weights are on standardized features, so they can be compared: positive = more risk, negative = less
         influence: features.map((feature, i) => ({ feature, weight: Math.round(weights[i] * 100) / 100 })),
     });
 };
 
 // What-if: risk of an order described by hand
-exports.lateRisk = (req, res) => {
+exports.otifRisk = (req, res) => {
     const order = {};
     for (const feature of FEATURES) {
         const value = req.body?.[feature];

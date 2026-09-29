@@ -75,10 +75,10 @@ router.get('/billing/export/pdf', auth, role(MANAGEMENT), billingController.expo
 router.get('/storage-rates', auth, role(YARD_READ), billingController.getRates);
 router.put('/storage-rates/:type', auth, role(ADMIN), billingController.updateRate);
 
-// Late-delivery risk model (trained on simulated orders, see backend/ml)
+// OTIF-miss risk model (trained on simulated orders, see backend/ml)
 router.get('/predictions/model', auth, role(READ), predictionController.getModel);
 router.get('/predictions/open-orders', auth, role(READ), predictionController.openOrders);
-router.post('/predictions/late-risk', auth, role(READ), predictionController.lateRisk);
+router.post('/predictions/otif-risk', auth, role(READ), predictionController.otifRisk);
 
 // OTIF indicator and alerts
 router.get('/otif', auth, role(MANAGEMENT), otifController.getOtif);

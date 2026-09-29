@@ -22,11 +22,12 @@ const FEATURE_LABELS = {
 const LEVELS = { low: ['Riesgo bajo', 'badge-delivered'], medium: ['Riesgo medio', 'badge-in-transit'], high: ['Riesgo alto', 'badge-failed'] };
 const DEFAULT_ORDER = { distanceKm: 40, weightKg: 1500, leadDays: 3, itemCount: 3, createdHour: 10, dueOnMonday: 0 };
 
+const pct = (n) => `${Math.round(n * 100)}%`;
 const RiskBadge = ({ probability, level }) => (
     <span className={`badge ${LEVELS[level][1]}`}>{LEVELS[level][0]} · {Math.round(probability * 100)}%</span>
 );
 
-// Which orders are likely to arrive late, from a model trained on simulated data (see docs/ai-model.md)
+// Which orders are likely to miss their OTIF (late or incomplete), from a model trained on simulated data (see docs/modelo-ia.md)
 function Predictions() {
     const [model, setModel] = useState(null);
     const [open, setOpen] = useState(null);
@@ -46,7 +47,7 @@ function Predictions() {
     // The what-if answer follows the form as it changes
     useEffect(() => {
         const timer = setTimeout(() => {
-            api.post('/predictions/late-risk', order).then((res) => setResult(res.data)).catch(() => setResult(null));
+            api.post('/predictions/otif-risk', order).then((res) => setResult(res.data)).catch(() => setResult(null));
         }, 250);
         return () => clearTimeout(timer);
     }, [order]);
@@ -63,7 +64,7 @@ function Predictions() {
                         <div>
                             <h1 className="page-title">Predicciones</h1>
                             <p className="page-sub">
-                                Riesgo de que una OT llegue atrasada, calculado con un modelo entrenado con datos simulados
+                                Riesgo de que una OT no cumpla su OTIF (llegue atrasada o incompleta), calculado con un modelo entrenado con datos simulados
                                 (aún no hay historial real suficiente).
                             </p>
                         </div>
@@ -77,10 +78,19 @@ function Predictions() {
                             {!model ? <span className="skeleton sk-line" /> : (
                                 <>
                                     <div className="stats stats-2">
-                                        <div className="stat"><div className="stat-num">{Math.round(model.metrics.accuracy * 100)}%</div><div className="stat-label">Aciertos</div><div className="hint">En {model.testSize.toLocaleString('es-CL')} OT que no vio al entrenar</div></div>
-                                        <div className="stat"><div className="stat-num">{model.metrics.auc.toLocaleString("es-CL", { maximumFractionDigits: 2 })}</div><div className="stat-label">AUC</div><div className="hint">1 = perfecto, 0,5 = azar</div></div>
+                                        {[
+                                            [pct(model.metrics.recall), 'Incumplimientos que detecta', 'De las OT que fallaron, cuántas había marcado'],
+                                            [pct(model.metrics.precision), 'Aciertos al marcar', 'De las OT que marca, cuántas de verdad fallan'],
+                                            [pct(model.metrics.top20), 'En el 20 % de mayor riesgo', 'Revisando solo esas OT se atrapa esta parte de las fallas'],
+                                            [pct(model.metrics.accuracy), 'Exactitud', `Responder siempre «cumple» acierta ${pct(model.metrics.baselineAccuracy)}`],
+                                        ].map(([value, label, hint]) => (
+                                            <div className="stat" key={label}><div className="stat-num">{value}</div><div className="stat-label">{label}</div><div className="hint">{hint}</div></div>
+                                        ))}
                                     </div>
-                                    <h3 className="card-title" style={{ marginTop: 16 }}>Qué pesa más en el atraso</h3>
+                                    <p className="hint" style={{ marginTop: 8 }}>
+                                        Medido en {model.testSize.toLocaleString('es-CL')} OT simuladas que el modelo no vio al entrenar. AUC {model.metrics.auc.toLocaleString('es-CL', { maximumFractionDigits: 2 })} (1 = perfecto, 0,5 = azar).
+                                    </p>
+                                    <h3 className="card-title" style={{ marginTop: 16 }}>Qué pesa más en el incumplimiento</h3>
                                     <ul className="influence">
                                         {[...model.influence].sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight)).map((i) => (
                                             <li key={i.feature}>
@@ -120,10 +130,10 @@ function Predictions() {
 
                 <Reveal>
                     <section className="card">
-                        <h2 className="card-title">OT abiertas, de mayor a menor riesgo</h2>
+                        <h2 className="card-title">OT abiertas, de mayor a menor riesgo de incumplir</h2>
                         <div className="table-wrap">
                             <table className="table">
-                                <thead><tr><th>OT</th><th>Cliente</th><th>Estado</th><th>Fecha comprometida</th><th>Distancia</th><th>Peso</th><th>Riesgo de atraso</th></tr></thead>
+                                <thead><tr><th>OT</th><th>Cliente</th><th>Estado</th><th>Fecha comprometida</th><th>Distancia</th><th>Peso</th><th>Riesgo de incumplir OTIF</th></tr></thead>
                                 <tbody>
                                     {(open ?? []).map((o) => (
                                         <tr key={o.id}>
