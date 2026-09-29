@@ -10,13 +10,14 @@ const LINKS = {
     drivers: { path: '/drivers', text: 'Conductores' },
     products: { path: '/products', text: 'Productos' },
     otif: { path: '/otif', text: 'OTIF' },
+    fleet: { path: '/fleet', text: 'Flota' },
     containers: { path: '/containers', text: 'Contenedores' },
 };
 
 // The company sells two services: transporting cargo and storing containers.
 // Each role sees the links of the services it works with (customers are shared by both).
 const SERVICE_LABELS = { transport: '🚚 Transporte', storage: '📦 Almacenaje' };
-const MANAGEMENT_TRANSPORT = ['orders', 'customers', 'vehicles', 'drivers', 'products', 'otif'];
+const MANAGEMENT_TRANSPORT = ['orders', 'fleet', 'customers', 'vehicles', 'drivers', 'products', 'otif'];
 const MENU = {
     dispatcher: { transport: ['orders'] },
     driver: {},

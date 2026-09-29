@@ -12,6 +12,7 @@ const productController = require('./src/controllers/productController');
 const otifController = require('./src/controllers/otifController');
 const alertController = require('./src/controllers/alertController');
 const containerController = require('./src/controllers/containerController');
+const fleetController = require('./src/controllers/fleetController');
 const auth = require('./src/middlewares/auth');
 const role = require('./src/middlewares/role');
 
@@ -72,6 +73,9 @@ app.get('/api/orders/:id', auth, role([...READ, 'driver']), orderController.getD
 app.patch('/api/orders/:id/schedule', auth, role(['dispatcher']), orderController.schedule);
 app.patch('/api/orders/:id/status', auth, role(['driver']), orderController.changeStatus);
 app.get('/api/my-route', auth, role(['driver']), orderController.myRoute);
+app.post('/api/my-route/position', auth, role(['driver']), fleetController.savePosition);
+// Where the trucks in transit are (last position reported by each driver's phone)
+app.get('/api/fleet', auth, role(MANAGEMENT), fleetController.getFleet);
 
 // Customers, vehicles, drivers and products: everyone but drivers reads; only the admin writes
 [

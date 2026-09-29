@@ -9,6 +9,7 @@ import Drivers from './pages/Drivers';
 import Products from './pages/Products';
 import Otif from './pages/Otif';
 import Containers from './pages/Containers';
+import Fleet from './pages/Fleet';
 import { homeRoute } from './utils/format';
 import { ToastProvider } from './components/Toast';
 
@@ -28,6 +29,7 @@ const MANAGEMENT = ['admin', 'supervisor'];
 // path -> [roles allowed, page component]
 const ROUTES = {
     '/orders': [['dispatcher', ...MANAGEMENT], Orders],
+    '/fleet': [MANAGEMENT, Fleet],
     '/customers': [MANAGEMENT, Customers],
     '/vehicles': [MANAGEMENT, Vehicles],
     '/drivers': [MANAGEMENT, Drivers],

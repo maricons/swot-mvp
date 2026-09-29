@@ -12,8 +12,8 @@ Proyecto de práctica personal (caso ficticio **Neo Tech Logística**, un operad
 | Rol | Puede |
 |---|---|
 | **Despachador** | Crear OT (cliente, fecha comprometida, productos), programarlas asignando vehículo y conductor, filtrarlas y exportarlas a Excel o PDF |
-| **Conductor** | Ver su hoja de ruta, iniciar la ruta y registrar la entrega con el **RUT de quien recibe** y la **foto de la guía firmada** (o marcarla como fallida) |
-| **Supervisor** | Ver órdenes, clientes, vehículos, conductores y productos (solo lectura), el **indicador OTIF por mes o de todo el historial** y las alertas |
+| **Conductor** | Ver su hoja de ruta con un **mapa de sus próximas paradas** y un enlace "Cómo llegar", iniciar la ruta y registrar la entrega con el **RUT de quien recibe** y la **foto de la guía firmada** (o marcarla como fallida, con confirmación) |
+| **Supervisor** | Ver órdenes, clientes, vehículos, conductores y productos (solo lectura), el **mapa de la flota en ruta**, el **indicador OTIF por mes o de todo el historial** y las alertas |
 | **Administrador** | Lo del supervisor, más crear, editar y desactivar clientes, vehículos, conductores y productos, y gestionar los contenedores |
 | **Operador de patio** | Anunciar contenedores, registrar su llegada, moverlos de posición y registrar su salida; ver el panel del patio y sus alertas |
 
@@ -26,6 +26,14 @@ Reglas de negocio que valida el sistema:
 - Los registros se **desactivan**, no se borran, para conservar el historial. Un usuario desactivado pierde el acceso al instante.
 - **OTIF** (On Time In Full): porcentaje de OT entregadas a tiempo y completas. Una OT fallida cuenta como no cumplida.
 - **Alertas:** revisiones técnicas que vencen en 30 días (o ya vencidas) y OT atrasadas; contenedores con más de 5 días en el patio y contenedores con la salida prevista vencida. Cada rol ve solo las alertas de su servicio.
+
+Mapas y seguimiento de la flota:
+
+- Cada cliente puede tener un **punto de entrega** en el mapa (latitud y longitud), que el administrador marca haciendo clic en el mapa al crear o editar el cliente. Las OT de un cliente sin punto se listan igual, pero no aparecen en el mapa.
+- **Conductor:** ve sus paradas numeradas en el orden de entrega (la que está en ruta se destaca), su propia posición y una línea que las une. Cada tarjeta trae "Cómo llegar", que abre Google Maps con la ruta.
+- **Ubicación del camión:** mientras el conductor tiene una OT **en ruta**, su celular informa dónde está (con permiso del navegador) como máximo cada 30 segundos. Solo se guarda la **última posición**, y se borra apenas termina su última entrega en ruta. Nunca se guarda un historial de recorridos.
+- **Supervisor y administrador:** la pantalla **Flota** muestra un mapa con cada camión en ruta, su destino y la señal más reciente; se actualiza sola cada 20 segundos. Un camión sin señal hace más de 10 minutos se ve en gris.
+- Los mapas usan [OpenStreetMap](https://www.openstreetmap.org/copyright) (necesitan internet para cargar el fondo). Los navegadores de celular solo entregan la ubicación en páginas **HTTPS** (o en `localhost`), así que para probarlo en un teléfono real hay que servir el frontend por HTTPS.
 
 Reglas del almacenaje de contenedores:
 
@@ -40,8 +48,8 @@ Reglas del almacenaje de contenedores:
 ```
 backend/    API REST (Express). src/controllers, src/middlewares, src/utils, scripts/, tests/
 frontend/   Aplicación React (Vite). src/pages, src/components, src/utils
-database/   init.sql (esquema + datos de prueba), procedures.sql, upgrade_to_english.sql, upgrade_add_containers.sql
-postman/    Colección de Postman con 93 pruebas
+database/   init.sql (esquema + datos de prueba), procedures.sql, upgrade_to_english.sql, upgrade_add_containers.sql, upgrade_add_maps.sql
+postman/    Colección de Postman con 110 pruebas
 ```
 
 ## Puesta en marcha
@@ -118,9 +126,9 @@ cd backend
 npm test
 ```
 
-Son 14 pruebas. Cubren login, permisos por rol, inyección SQL, RUT y patentes, conductores, productos, cálculo de peso, reglas de programación, prueba de entrega, OTIF, alertas, exportaciones y todo el ciclo de un contenedor (anuncio, llegada, movimiento, salida e historial).
+Son 15 pruebas. Cubren login, permisos por rol, inyección SQL, RUT y patentes, conductores, productos, cálculo de peso, reglas de programación, prueba de entrega, OTIF, alertas, exportaciones todo el ciclo de un contenedor (anuncio, llegada, movimiento, salida e historial) y los mapas (puntos de entrega, posición del camión y flota).
 
-**Colección de Postman:** importa `postman/SWOT.postman_collection.json` y ejecútala completa con el Collection Runner (con el backend en `http://localhost:3000/api`). Son 93 peticiones con 111 verificaciones, que recorren el flujo completo de una OT y de un contenedor con los 5 roles y comprueban los errores de permisos, validación y seguridad. Por línea de comandos: `npx newman run postman/SWOT.postman_collection.json`. Como incluye intentos de login fallidos a propósito, no la ejecutes dos veces seguidas en menos de 2 minutos (el límite de intentos respondería 429); tampoco borra lo que crea, así que limpia esos registros de prueba si la corres contra tu base real (los contenedores de la colección empiezan con `PMNU`).
+**Colección de Postman:** importa `postman/SWOT.postman_collection.json` y ejecútala completa con el Collection Runner (con el backend en `http://localhost:3000/api`). Son 110 peticiones con 131 verificaciones, que recorren el flujo completo de una OT y de un contenedor con los 5 roles y comprueban los errores de permisos, validación y seguridad. Por línea de comandos: `npx newman run postman/SWOT.postman_collection.json`. Como incluye intentos de login fallidos a propósito, no la ejecutes dos veces seguidas en menos de 2 minutos (el límite de intentos respondería 429); tampoco borra lo que crea, así que limpia esos registros de prueba si la corres contra tu base real (los contenedores de la colección empiezan con `PMNU`).
 
 **Pruebas manuales en la interfaz** (recorrido de la demo):
 
@@ -128,7 +136,8 @@ Son 14 pruebas. Cubren login, permisos por rol, inyección SQL, RUT y patentes, 
 2. Como conductor (en modo celular de las DevTools): iniciar la ruta y entregar con RUT y foto.
 3. Como supervisor: abrir el detalle de la OT (guía firmada e historial), el **OTIF** por mes y de todo el historial, y exportar a PDF.
 4. Como administrador: crear un cliente (el RUT se formatea solo), un conductor y un producto con foto.
-5. Como operador de patio (o cambiando a **Almacenaje** como administrador): anunciar un contenedor refrigerado, registrar su llegada, moverlo y registrar su salida; abrir el detalle para ver el historial.
+5. Como conductor, con un OT programada a un cliente con punto en el mapa: iniciar la ruta y aceptar el permiso de ubicación; como supervisor, abrir **Flota** y ver el camión en el mapa. (En el navegador, las DevTools permiten simular una ubicación en *Sensors*.)
+6. Como operador de patio (o cambiando a **Almacenaje** como administrador): anunciar un contenedor refrigerado, registrar su llegada, moverlo y registrar su salida; abrir el detalle para ver el historial.
 
 ## Copias de seguridad
 
@@ -158,7 +167,7 @@ docker exec swot-sql /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "TuClav
 
 ## API (resumen)
 
-`POST /api/auth/login` · `/api/orders` (listar, crear, `/:id`, `/:id/schedule`, `/:id/status`, `/export/excel`, `/export/pdf`) · `/api/my-route` · `/api/customers` · `/api/vehicles` · `/api/drivers` · `/api/products` (listar, crear, editar y `/:id/active`) · `/api/otif` (`?groupBy=month|all`, `/export/pdf`) · `/api/alerts` · `/api/containers` (listar, crear, `/summary`, `/:id`, editar, `/:id/arrive`, `/:id/move`, `/:id/depart`)
+`POST /api/auth/login` · `/api/orders` (listar, crear, `/:id`, `/:id/schedule`, `/:id/status`, `/export/excel`, `/export/pdf`) · `/api/my-route` · `/api/customers` · `/api/vehicles` · `/api/drivers` · `/api/products` (listar, crear, editar y `/:id/active`) · `/api/otif` (`?groupBy=month|all`, `/export/pdf`) · `/api/alerts` · `/api/fleet` · `/api/my-route/position` · `/api/containers` (listar, crear, `/summary`, `/:id`, editar, `/:id/arrive`, `/:id/move`, `/:id/depart`)
 
 Los códigos de estado y roles son en inglés en la base y la API (`Created`, `Scheduled`, `InTransit`, `Delivered`, `Failed`; `Expected`, `InYard`, `Departed`; `dispatcher`, `driver`, `admin`, `supervisor`, `yard`); las pantallas los muestran en español.
 
@@ -168,6 +177,12 @@ Para agregarle el servicio de almacenaje de contenedores (rol de patio, tablas y
 
 ```bash
 node scripts/run_sql.js ../database/upgrade_add_containers.sql ../database/procedures.sql
+```
+
+Para agregar los mapas (punto de entrega de cada cliente y posición de los camiones):
+
+```bash
+node scripts/run_sql.js ../database/upgrade_add_maps.sql ../database/procedures.sql
 ```
 
 ### Si las tablas estaban en español
