@@ -6,6 +6,7 @@ const columns = [
     { header: 'Empresa', cell: (c) => <strong>{c.name}</strong> },
     { header: 'RUT', cell: (c) => c.taxId, className: 'num' },
     { header: 'Dirección', cell: (c) => c.address },
+    { header: 'Mapa', cell: (c) => (c.latitude != null ? '📍 Sí' : <span className="hint">Sin ubicación</span>) },
     { header: 'OT', cell: (c) => c.totalOrders, className: 'num' },
 ];
 

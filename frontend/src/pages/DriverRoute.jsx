@@ -5,8 +5,23 @@ import Topbar from '../components/Topbar';
 import StatusBadge from '../components/StatusBadge';
 import DeliveryModal from '../components/DeliveryModal';
 import ConfirmModal from '../components/ConfirmModal';
+import DriverMap from '../components/DriverMap';
 import Reveal from '../components/Reveal';
+import { useTruckTracking } from '../hooks/useTruckTracking';
 import { useToast } from '../components/Toast';
+
+// Opens the phone's maps app (or Google Maps) with directions to the customer: by coordinates when there are, by address otherwise
+const directionsUrl = (order) => {
+    const destination = order.customerLatitude != null ? `${order.customerLatitude},${order.customerLongitude}` : encodeURIComponent(order.customerAddress);
+    return `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+};
+
+const TRACKING_MESSAGES = {
+    sharing: '📡 Compartiendo tu ubicación con la central mientras estás en ruta.',
+    denied: '📵 No diste permiso de ubicación: la central no verá tu camión. Actívalo en la configuración del navegador.',
+    error: '📵 No se pudo obtener tu ubicación. Revisa que el GPS esté encendido.',
+    unsupported: '📵 Este navegador no puede compartir la ubicación.',
+};
 
 // Mobile view of the driver: the pending orders, with the buttons to start the route and to close each delivery
 function DriverRoute() {
@@ -17,6 +32,8 @@ function DriverRoute() {
     const [delivering, setDelivering] = useState(null); // order whose proof of delivery is being filled in
     const [failing, setFailing] = useState(null); // order waiting for the confirmation of a failed delivery
     const toast = useToast();
+    // While something is in transit the phone reports where the truck is
+    const tracking = useTruckTracking(orders.some((o) => o.status === 'InTransit'));
 
     useEffect(() => {
         api.get('/my-route')
@@ -50,6 +67,9 @@ function DriverRoute() {
                     <p className="page-sub">Tus entregas de hoy.</p>
                 </Reveal>
 
+                {TRACKING_MESSAGES[tracking.status] && <p className={`tracking tracking-${tracking.status}`}>{TRACKING_MESSAGES[tracking.status]}</p>}
+                {!loading && orders.length > 0 && <Reveal delay={100}><DriverMap orders={orders} position={tracking.position} /></Reveal>}
+
                 <div className="driver-list">
                     {loading && [1, 2].map((n) => <span key={n} className="skeleton sk-card" />)}
                     {!loading && orders.map((order, i) => (
@@ -63,6 +83,7 @@ function DriverRoute() {
                             <div className="trip-meta">
                                 <span className="pill">{Number(order.weightKg).toLocaleString('es-CL')} kg</span>
                                 {order.plate && <span className="pill">🚚 {order.plate}</span>}
+                                <a className="pill pill-link" href={directionsUrl(order)} target="_blank" rel="noreferrer">🧭 Cómo llegar</a>
                             </div>
 
                             <div className="trip-actions">

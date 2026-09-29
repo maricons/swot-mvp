@@ -1,9 +1,10 @@
 // src/components/FormModal.jsx
 import { useState } from 'react';
 import PhotoInput from './PhotoInput';
+import PointPicker from './PointPicker';
 
 // Generic create/edit modal. fields = [{ name, label, type, hint, format, options, ...inputProps }];
-// type "select" takes options = [{ value, label }] (or a function of the form values), type "photo" stores a data URL.
+// type "select" takes options = [{ value, label }] (or a function of the form values), type "photo" stores a data URL, type "point" stores { latitude, longitude } picked on a map.
 // showIf(form) hides a field, normalize(form) fixes dependent values after every change.
 // submit(values) performs the API call and rejects on failure.
 function FormModal({ title, fields, initial, submit, message, submitText = 'Guardar', normalize, onClose, onSaved }) {
@@ -27,6 +28,7 @@ function FormModal({ title, fields, initial, submit, message, submitText = 'Guar
     const renderInput = ({ name, format, options, type, ...inputProps }) => {
         const set = (value) => setForm(normalize ? normalize({ ...form, [name]: value }) : { ...form, [name]: value });
         if (type === 'photo') return <PhotoInput value={form[name]} onChange={set} />;
+        if (type === 'point') return <PointPicker value={form[name]} onChange={set} />;
         if (type === 'select') {
             return (
                 <select className="input" value={form[name]} onChange={(e) => set(e.target.value)} {...inputProps}>
