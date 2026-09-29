@@ -135,7 +135,7 @@ h1, h2, h3, p { margin: 0; }
 .card-title { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
 
 /* ===== Resumen ===== */
-.overview { display: grid; grid-template-columns: 1fr 340px; gap: 12px; margin: 22px 0; align-items: stretch; }
+.overview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: 12px; margin: 22px 0; align-items: stretch; }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .stats .reveal > .stat { height: 100%; }
 .stat {
@@ -380,7 +380,7 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
   .row-in { animation: none; }
 }
 /* ===== Gráfico de dona ===== */
-.donut-card { display: flex; flex-direction: column; height: 100%; }
+.donut-card { display: flex; flex-direction: column; height: 100%; container-type: inline-size; }
 .donut-body { display: flex; align-items: center; gap: 18px; flex: 1; }
 .donut-wrap { position: relative; width: 150px; flex-shrink: 0; }
 .donut { width: 100%; display: block; transform: rotate(0deg); }
@@ -392,8 +392,8 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .donut-leyenda li { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 6px; border-radius: 8px; cursor: default; }
 .leyenda-activa { background: var(--primary-soft); }
 .leyenda-punto { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
-.leyenda-nombre { flex: 1; color: var(--text); }
-.leyenda-valor { font-weight: 700; font-variant-numeric: tabular-nums; }
+.leyenda-nombre { flex: 1; min-width: 0; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.leyenda-valor { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .leyenda-valor small { color: var(--muted); font-weight: 600; }
 .sk-donut { width: 150px; height: 150px; border-radius: 50%; margin: 10px auto; }
 /* ===== Navegación y encabezados de página ===== */
@@ -531,3 +531,18 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 /* ===== Confirmation dialog ===== */
 .modal-small { max-width: 400px; }
 .confirm-text { color: var(--muted); font-size: 14px; line-height: 1.5; margin-top: 8px; }
+
+/* ===== Responsive charts ===== */
+/* The donut adapts to the width of its own card, not to the screen */
+@container (max-width: 300px) {
+  .donut-body { flex-direction: column; align-items: stretch; gap: 14px; }
+  .donut-wrap { width: min(170px, 65%); margin: 0 auto; }
+}
+@container (min-width: 520px) {
+  .donut-wrap { width: 190px; }
+  .donut-leyenda li { font-size: 14px; }
+}
+/* When the screen is not wide enough for tiles + chart side by side, the chart takes the full row */
+@media (max-width: 1000px) {
+  .overview { grid-template-columns: minmax(0, 1fr); }
+}

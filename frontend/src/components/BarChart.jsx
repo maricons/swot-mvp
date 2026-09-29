@@ -1,17 +1,29 @@
 // src/components/BarChart.jsx
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 // Bar chart in plain SVG for percentages (0-100) over time.
 // data = [{ label, value (0-100 or null), detail }]. Bars with a null value are drawn as an empty slot.
 function BarChart({ title, data, loading, color = '#8fa7d6', emptyText = 'Sin datos para graficar.' }) {
     const [active, setActive] = useState(null);
+    const observerRef = useRef(null);
+    const [available, setAvailable] = useState(320);
 
-    const width = Math.max(320, data.length * 64);
+    // The drawing is as wide as its card (text keeps its size on any screen); with many bars it scrolls instead of squeezing.
+    // It is measured when the card appears and again whenever the card changes size.
+    const measure = useCallback((el) => {
+        observerRef.current?.disconnect();
+        if (!el) return;
+        setAvailable(Math.floor(el.clientWidth));
+        observerRef.current = new ResizeObserver(([entry]) => setAvailable(Math.floor(entry.contentRect.width)));
+        observerRef.current.observe(el);
+    }, []);
+
+    const width = Math.max(available, data.length * 56 + 48);
     const height = 220;
     const pad = { top: 16, right: 12, bottom: 44, left: 36 };
     const plotHeight = height - pad.top - pad.bottom;
     const slot = (width - pad.left - pad.right) / Math.max(data.length, 1);
-    const barWidth = Math.min(36, slot * 0.6);
+    const barWidth = Math.min(44, slot * 0.6);
 
     return (
         <section className="card">
@@ -21,8 +33,8 @@ function BarChart({ title, data, loading, color = '#8fa7d6', emptyText = 'Sin da
             {!loading && data.length === 0 && <div className="empty">{emptyText}</div>}
 
             {!loading && data.length > 0 && (
-                <div className="chart-scroll">
-                    <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} role="img" aria-label={title}>
+                <div className="chart-scroll" ref={measure}>
+                    <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} style={{ display: 'block' }} role="img" aria-label={title}>
                         {[0, 25, 50, 75, 100].map((tick) => {
                             const y = pad.top + plotHeight - (tick / 100) * plotHeight;
                             return (
