@@ -29,7 +29,7 @@ const overview = (vehicles, loading) => {
     const tiles = [['Vehículos en vista', vehicles.length], ['RT vigentes', valid], ['RT vencidas', vehicles.length - valid]];
     return (
         <>
-            <AlertsPanel onlyVehicles />
+            <AlertsPanel sections={['vehicles']} />
             <div className="overview">
                 <div className="stats">
                     {tiles.map(([label, value], i) => (

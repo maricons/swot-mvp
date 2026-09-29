@@ -5,11 +5,12 @@ const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
 const { sql, poolPromise } = require('../src/config/db');
+const { normalizeContainerNumber } = require('../src/utils/validate');
 
 const BASE = 'http://localhost:3998/api';
 const PASSWORD = 'hash_simulado_123';
 const TINY_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
-const created = { orders: [], products: [], drivers: [], customers: [], vehicles: [] };
+const created = { orders: [], products: [], drivers: [], customers: [], vehicles: [], containers: [] };
 const tokens = {};
 let server;
 
@@ -35,6 +36,7 @@ before(async () => {
     tokens.driver = await login('conductor@swot.cl');
     tokens.admin = await login('admin@swot.cl');
     tokens.supervisor = await login('supervisor@swot.cl');
+    tokens.yard = await login('patio@swot.cl');
 });
 
 after(async () => {
@@ -44,6 +46,7 @@ after(async () => {
     for (const id of created.orders) {
         await run(`DELETE FROM order_item WHERE order_id = ${id}; DELETE FROM order_history WHERE order_id = ${id}; DELETE FROM transport_order WHERE id = ${id}`);
     }
+    for (const id of created.containers) await run(`DELETE FROM container_event WHERE container_id = ${id}; DELETE FROM container WHERE id = ${id}`);
     for (const id of created.products) await run(`DELETE FROM product WHERE id = ${id}`);
     for (const id of created.drivers) await run(`DELETE FROM app_user WHERE id = ${id}`);
     for (const id of created.customers) await run(`DELETE FROM customer WHERE id = ${id}`);
@@ -199,4 +202,81 @@ test('OTIF by month and for the whole history, alerts and exports', async () => 
     assert.equal(Buffer.from(pdf.body).subarray(0, 4).toString(), '%PDF');
     const otifPdf = await call('GET', '/otif/export/pdf?groupBy=all', { token: tokens.supervisor });
     assert.match(otifPdf.type, /application\/pdf/);
+});
+
+// A random ISO 6346 number: fixed test prefix, random serial, and the one check digit that makes it valid
+const newContainerNumber = () => {
+    const base = `ZZZU${String(Math.floor(Math.random() * 1e6)).padStart(6, '0')}`;
+    return [...Array(10).keys()].map((d) => base + d).find((candidate) => normalizeContainerNumber(candidate));
+};
+
+test('containers: permissions and validation', async () => {
+    assert.equal((await call('GET', '/containers', { token: tokens.yard })).status, 200);
+    assert.equal((await call('GET', '/containers', { token: tokens.supervisor })).status, 200);
+    assert.equal((await call('GET', '/containers', { token: tokens.dispatcher })).status, 403);
+    assert.equal((await call('GET', '/containers', { token: tokens.driver })).status, 403);
+    assert.equal((await call('GET', '/customers', { token: tokens.yard })).status, 200); // needed to register containers
+
+    const dry = { containerNumber: newContainerNumber(), customerId: 1, containerType: '40HC', cargoType: 'dry' };
+    assert.equal((await call('POST', '/containers', { token: tokens.supervisor, body: dry })).status, 403); // read only
+    assert.equal((await call('POST', '/containers', { token: tokens.yard, body: { ...dry, containerNumber: 'CSQU3054384' } })).status, 400); // bad check digit
+    assert.equal((await call('POST', '/containers', { token: tokens.yard, body: { ...dry, containerType: '10XX' } })).status, 400);
+    assert.equal((await call('POST', '/containers', { token: tokens.yard, body: { ...dry, cargoType: 'perishable', temperatureC: 4 } })).status, 400); // perishable needs a reefer
+    assert.equal((await call('POST', '/containers', { token: tokens.yard, body: { ...dry, containerType: '40RF', cargoType: 'perishable' } })).status, 400); // and a temperature
+    assert.equal((await call('POST', '/containers', { token: tokens.yard, body: { ...dry, customerId: 999999 } })).status, 409);
+    const evil = encodeURIComponent("InYard';DROP TABLE container;--");
+    assert.equal((await call('GET', `/containers?status=${evil}`, { token: tokens.yard })).status, 400);
+});
+
+test('containers: announce, arrive, move and depart with history', async () => {
+    const body = {
+        containerNumber: newContainerNumber(), customerId: 1, containerType: '40RF', cargoType: 'perishable',
+        temperatureC: 2, sealNumber: 'SL-TEST', expectedArrival: futureDay(1), plannedDeparture: futureDay(4),
+    };
+    const made = await call('POST', '/containers', { token: tokens.yard, body });
+    assert.equal(made.status, 201);
+    const id = made.body.id;
+    created.containers.push(id);
+    assert.equal((await call('POST', '/containers', { token: tokens.admin, body })).status, 409); // same number
+
+    const event = (kind, payload = {}, token = tokens.yard) => call('POST', `/containers/${id}/${kind}`, { token, body: payload });
+    assert.equal((await event('move', { yardLocation: 'B-01-1' })).status, 409); // has not arrived
+    assert.equal((await event('depart')).status, 409);
+    assert.equal((await event('arrive', {})).status, 400); // needs a yard position
+    assert.equal((await event('arrive', { yardLocation: 'B-01-1' }, tokens.supervisor)).status, 403);
+    assert.equal((await event('arrive', { yardLocation: 'r-01-1' })).status, 200);
+    assert.equal((await event('arrive', { yardLocation: 'R-01-1' })).status, 409); // already in the yard
+    assert.equal((await event('move', { yardLocation: 'R-01-1' })).status, 409); // same position
+    assert.equal((await event('move', { yardLocation: 'R-02-4', notes: 'closer to the plug' })).status, 200);
+
+    const inYard = (await call('GET', `/containers/${id}`, { token: tokens.supervisor })).body.container;
+    assert.equal(inYard.status, 'InYard');
+    assert.equal(inYard.yardLocation, 'R-02-4');
+    assert.equal(inYard.daysInYard, 0);
+    assert.equal(inYard.overstay, 0);
+
+    assert.equal((await call('PUT', `/containers/${id}`, { token: tokens.admin, body: { ...body, plannedDeparture: futureDay(6), notes: 'edited' } })).status, 200);
+    assert.equal((await event('depart', { notes: 'picked up by the customer' })).status, 200);
+    assert.equal((await event('depart')).status, 409);
+    assert.equal((await call('PUT', `/containers/${id}`, { token: tokens.admin, body })).status, 409); // departed containers are closed
+
+    const detail = (await call('GET', `/containers/${id}`, { token: tokens.admin })).body;
+    assert.deepEqual(detail.events.map((e) => e.eventType), ['Announced', 'Arrived', 'Moved', 'Departed']);
+    assert.equal(detail.container.status, 'Departed');
+    assert.equal(detail.container.yardLocation, null);
+    assert.equal(detail.events[3].yardLocation, 'R-02-4'); // the history keeps the last position
+});
+
+test('containers: summary and alerts by service', async () => {
+    const summary = await call('GET', '/containers/summary', { token: tokens.yard });
+    assert.equal(summary.status, 200);
+    for (const key of ['expected', 'inYard', 'departed', 'perishableInYard', 'dryInYard', 'overstays', 'avgDaysInYard', 'freeDays']) {
+        assert.ok(key in summary.body, `summary has ${key}`);
+    }
+
+    const yardAlerts = (await call('GET', '/alerts', { token: tokens.yard })).body;
+    assert.deepEqual([yardAlerts.vehicles.length, yardAlerts.overdueOrders.length], [0, 0]); // storage alerts only
+    const dispatcherAlerts = (await call('GET', '/alerts', { token: tokens.dispatcher })).body;
+    assert.deepEqual([dispatcherAlerts.overstayContainers.length, dispatcherAlerts.overdueContainers.length], [0, 0]); // transport alerts only
+    assert.equal((await call('GET', '/alerts', { token: tokens.driver })).status, 403);
 });
