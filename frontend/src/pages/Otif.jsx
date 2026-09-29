@@ -6,14 +6,14 @@ import Reveal from '../components/Reveal';
 import DonutChart from '../components/DonutChart';
 import BarChart from '../components/BarChart';
 import { useToast } from '../components/Toast';
-import { formatDay, downloadFile } from '../utils/format';
+import { downloadFile } from '../utils/format';
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
-// "2026-09-01" -> "sep 2026" for months, "28-09" for the Monday that starts a week
-const periodLabel = (period, groupBy) => {
+// "2026-09-01" -> "sep 2026"
+const monthLabel = (period) => {
     const [year, month] = period.split('-');
-    return groupBy === 'month' ? `${MONTHS[Number(month) - 1]} ${year}` : formatDay(period).slice(0, 5);
+    return `${MONTHS[Number(month) - 1]} ${year}`;
 };
 
 // OTIF = On Time In Full: share of finished orders delivered by the promised date and complete
@@ -47,9 +47,9 @@ function Otif() {
         ['OT medidas', total, 'Entregadas o fallidas con fecha comprometida'],
     ];
     const bars = (stats?.series ?? []).map((s) => ({
-        label: periodLabel(s.period, groupBy),
+        label: monthLabel(s.period),
         value: Math.round((s.otif / s.total) * 100),
-        detail: `${s.otif} de ${s.total} OT cumplen OTIF${groupBy === 'week' ? ` (semana del ${formatDay(s.period)})` : ''}`,
+        detail: `${s.otif} de ${s.total} OT cumplen OTIF`,
     }));
 
     return (
@@ -71,10 +71,10 @@ function Otif() {
                 <Reveal delay={100}>
                     <div className="filters">
                         <div className="field">
-                            <label>Agrupar por</label>
+                            <label>Ver</label>
                             <div className="segmented">
                                 <button type="button" className={groupBy === 'month' ? 'seg-on' : ''} onClick={() => setGroupBy('month')}>Mes</button>
-                                <button type="button" className={groupBy === 'week' ? 'seg-on' : ''} onClick={() => setGroupBy('week')}>Semana</button>
+                                <button type="button" className={groupBy === 'all' ? 'seg-on' : ''} onClick={() => setGroupBy('all')}>Todo el historial</button>
                             </div>
                         </div>
                         <div className="field">
@@ -116,14 +116,16 @@ function Otif() {
                     </Reveal>
                 </div>
 
-                <Reveal delay={150}>
-                    <BarChart
-                        title={`OTIF por ${groupBy === 'month' ? 'mes' : 'semana'}`}
-                        data={bars}
-                        loading={loading}
-                        emptyText="Aún no hay OT finalizadas con fecha comprometida. Crea una con fecha comprometida y llévala hasta «Entregada»."
-                    />
-                </Reveal>
+                {groupBy === 'month' && (
+                    <Reveal delay={150}>
+                        <BarChart
+                            title="OTIF por mes"
+                            data={bars}
+                            loading={loading}
+                            emptyText="Aún no hay OT finalizadas con fecha comprometida. Crea una con fecha comprometida y llévala hasta «Entregada»."
+                        />
+                    </Reveal>
+                )}
             </main>
         </>
     );

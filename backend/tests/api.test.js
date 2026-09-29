@@ -179,13 +179,13 @@ test('delivery flow: proof of delivery is required', async () => {
     assert.equal('deliveryPhoto' in list.body[0], false);
 });
 
-test('OTIF by month and week, alerts and exports', async () => {
+test('OTIF by month and for the whole history, alerts and exports', async () => {
     const otif = await call('GET', '/otif?groupBy=month', { token: tokens.supervisor });
     assert.equal(otif.status, 200);
     assert.ok(otif.body.total >= 1 && otif.body.otif >= 1);
     assert.ok(otif.body.series.length >= 1);
-    assert.equal((await call('GET', '/otif?groupBy=week', { token: tokens.admin })).status, 200);
-    assert.equal((await call('GET', '/otif?groupBy=year', { token: tokens.admin })).status, 400);
+    assert.equal((await call('GET', '/otif?groupBy=all', { token: tokens.admin })).status, 200);
+    assert.equal((await call('GET', '/otif?groupBy=week', { token: tokens.admin })).status, 400);
 
     const alerts = await call('GET', '/alerts', { token: tokens.dispatcher });
     assert.equal(alerts.status, 200);
@@ -197,6 +197,6 @@ test('OTIF by month and week, alerts and exports', async () => {
     const pdf = await call('GET', '/orders/export/pdf', { token: tokens.supervisor });
     assert.match(pdf.type, /application\/pdf/);
     assert.equal(Buffer.from(pdf.body).subarray(0, 4).toString(), '%PDF');
-    const otifPdf = await call('GET', '/otif/export/pdf?groupBy=week', { token: tokens.supervisor });
+    const otifPdf = await call('GET', '/otif/export/pdf?groupBy=all', { token: tokens.supervisor });
     assert.match(otifPdf.type, /application\/pdf/);
 });

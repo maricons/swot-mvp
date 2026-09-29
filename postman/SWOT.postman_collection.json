@@ -3203,13 +3203,60 @@
           }
         },
         {
-          "name": "OTIF by week (admin)",
+          "name": "OTIF for the whole history (admin)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
                   "pm.test('status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/otif?groupBy=all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "otif"
+              ],
+              "query": [
+                {
+                  "key": "groupBy",
+                  "value": "all"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "OTIF with an invalid grouping, weeks are not supported (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
                 ]
               }
             }
@@ -3244,53 +3291,6 @@
                 {
                   "key": "groupBy",
                   "value": "week"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "OTIF with an invalid grouping (400)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{adminToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{baseUrl}}/otif?groupBy=year",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "otif"
-              ],
-              "query": [
-                {
-                  "key": "groupBy",
-                  "value": "year"
                 }
               ]
             }
@@ -3338,7 +3338,7 @@
           }
         },
         {
-          "name": "OTIF to PDF",
+          "name": "OTIF to PDF (whole history)",
           "event": [
             {
               "listen": "test",
@@ -3369,7 +3369,7 @@
               ]
             },
             "url": {
-              "raw": "{{baseUrl}}/otif/export/pdf?groupBy=week",
+              "raw": "{{baseUrl}}/otif/export/pdf?groupBy=all",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -3381,7 +3381,7 @@
               "query": [
                 {
                   "key": "groupBy",
-                  "value": "week"
+                  "value": "all"
                 }
               ]
             }

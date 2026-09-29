@@ -8,11 +8,10 @@ const { sendTablePdf, formatDay } = require('../utils/pdf');
 const ON_TIME = "status = 'Delivered' AND CAST(delivered_at AS DATE) <= due_date";
 const IN_FULL = "status = 'Delivered' AND in_full = 1";
 
-// Start of the period each order belongs to (Monday for weeks; 1900-01-01 was a Monday)
-const PERIODS = {
-    month: 'DATEFROMPARTS(YEAR(due_date), MONTH(due_date), 1)',
-    week: "DATEADD(DAY, -(DATEDIFF(DAY, '19000101', due_date) % 7), due_date)",
-};
+// First day of the month each order belongs to
+const MONTH = 'DATEFROMPARTS(YEAR(due_date), MONTH(due_date), 1)';
+// month = one row per month; all = the whole history as a single total
+const GROUPINGS = ['month', 'all'];
 
 const COUNTS = `COUNT(*) AS total,
     COALESCE(SUM(CASE WHEN ${ON_TIME} THEN 1 ELSE 0 END), 0) AS onTime,
@@ -23,8 +22,8 @@ const COUNTS = `COUNT(*) AS total,
 const computeOtif = async (req, res) => {
     const { from, to } = req.query;
     const groupBy = req.query.groupBy || 'month';
-    if ((from && !isDate(from)) || (to && !isDate(to)) || !PERIODS[groupBy]) {
-        res.status(400).json({ error: 'Parámetros no válidos (fechas AAAA-MM-DD, groupBy month o week)' });
+    if ((from && !isDate(from)) || (to && !isDate(to)) || !GROUPINGS.includes(groupBy)) {
+        res.status(400).json({ error: 'Parámetros no válidos (fechas AAAA-MM-DD, groupBy month o all)' });
         return null;
     }
 
@@ -41,13 +40,13 @@ const computeOtif = async (req, res) => {
             where += ' AND due_date <= @to';
         }
 
-        // PERIODS[groupBy] is one of two fixed expressions, never text from the request
         const summary = await request.query(`SELECT ${COUNTS} FROM transport_order WHERE ${where}`);
-        const series = await request.query(
-            `SELECT CONVERT(VARCHAR(10), ${PERIODS[groupBy]}, 23) AS period, ${COUNTS}
+        // The monthly series is only needed when grouping by month
+        const series = groupBy === 'month' ? await request.query(
+            `SELECT CONVERT(VARCHAR(10), ${MONTH}, 23) AS period, ${COUNTS}
              FROM transport_order WHERE ${where}
-             GROUP BY ${PERIODS[groupBy]} ORDER BY ${PERIODS[groupBy]}`
-        );
+             GROUP BY ${MONTH} ORDER BY ${MONTH}`
+        ) : { recordset: [] };
         return { summary: summary.recordset[0], series: series.recordset, groupBy, from, to };
     } catch (error) {
         internalError(res, error);
@@ -75,14 +74,16 @@ exports.exportPdf = async (req, res) => {
     sendTablePdf(res, {
         filename: `otif-${new Date().toISOString().slice(0, 10)}.pdf`,
         title: 'Indicador OTIF',
-        subtitle: `On Time In Full por ${groupBy === 'week' ? 'semana' : 'mes'} (según fecha comprometida)${filters ? `  ·  ${filters}` : ''}`,
+        subtitle: `On Time In Full ${groupBy === 'month' ? 'por mes' : 'de todo el historial'} (según fecha comprometida)${filters ? `  ·  ${filters}` : ''}`,
         columns: [
-            { header: groupBy === 'week' ? 'Semana (lunes)' : 'Mes', key: 'period', width: 3 },
+            { header: groupBy === 'month' ? 'Mes' : 'Período', key: 'period', width: 3 },
             { header: 'OT medidas', key: 'total', width: 2, align: 'right' },
             { header: 'A tiempo', key: 'onTime', width: 2, align: 'right' },
             { header: 'Completas', key: 'inFull', width: 2, align: 'right' },
             { header: 'OTIF', key: 'otif', width: 2, align: 'right' },
         ],
-        rows: [...series.map((s) => row(formatDay(s.period), s)), row('TOTAL', summary)],
+        rows: groupBy === 'month'
+            ? [...series.map((s) => row(formatDay(s.period), s)), row('TOTAL', summary)]
+            : [row('Todo el historial', summary)],
     });
 };

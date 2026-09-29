@@ -10,7 +10,7 @@ Proyecto de práctica personal (caso ficticio **Neo Tech Logística**): un siste
 |---|---|
 | **Despachador** | Crear OT (cliente, fecha comprometida, productos), programarlas asignando vehículo y conductor, filtrarlas y exportarlas a Excel o PDF |
 | **Conductor** | Ver su hoja de ruta, iniciar la ruta y registrar la entrega con el **RUT de quien recibe** y la **foto de la guía firmada** (o marcarla como fallida) |
-| **Supervisor** | Ver órdenes, clientes, vehículos, conductores y productos (solo lectura), el **indicador OTIF por mes y semana** y las alertas |
+| **Supervisor** | Ver órdenes, clientes, vehículos, conductores y productos (solo lectura), el **indicador OTIF por mes o de todo el historial** y las alertas |
 | **Administrador** | Lo del supervisor, más crear, editar y desactivar clientes, vehículos, conductores y productos |
 
 Reglas de negocio que valida el sistema:
@@ -107,13 +107,13 @@ npm test
 
 Cubren login, permisos por rol, inyección SQL, RUT y patentes, conductores, productos, cálculo de peso, reglas de programación, prueba de entrega, OTIF, alertas y exportaciones.
 
-**Colección de Postman:** importa `postman/SWOT.postman_collection.json` y ejecútala completa con el Collection Runner (con el backend en `http://localhost:3000/api`). Son 70 peticiones con 85 verificaciones, que recorren el flujo completo de una OT con los 4 roles y comprueban los errores de permisos, validación y seguridad. Por línea de comandos: `npx newman run postman/SWOT.postman_collection.json`.
+**Colección de Postman:** importa `postman/SWOT.postman_collection.json` y ejecútala completa con el Collection Runner (con el backend en `http://localhost:3000/api`). Son 70 peticiones con 85 verificaciones, que recorren el flujo completo de una OT con los 4 roles y comprueban los errores de permisos, validación y seguridad. Por línea de comandos: `npx newman run postman/SWOT.postman_collection.json`. Como incluye intentos de login fallidos a propósito, no la ejecutes dos veces seguidas en menos de 2 minutos (el límite de intentos respondería 429); tampoco borra lo que crea, así que limpia esos registros de prueba si la corres contra tu base real.
 
 **Pruebas manuales en la interfaz** (recorrido de la demo):
 
 1. Como despachador: crear una OT con un producto con peso (el peso sale calculado), con fecha comprometida, y programarla con el camión `AB1234`. Probar el camión `CD5678` para ver el error de revisión técnica.
 2. Como conductor (en modo celular de las DevTools): iniciar la ruta y entregar con RUT y foto.
-3. Como supervisor: abrir el detalle de la OT (guía firmada e historial), el **OTIF** por mes y semana y exportar a PDF.
+3. Como supervisor: abrir el detalle de la OT (guía firmada e historial), el **OTIF** por mes y de todo el historial, y exportar a PDF.
 4. Como administrador: crear un cliente (el RUT se formatea solo), un conductor y un producto con foto.
 
 ## Seguridad
@@ -126,7 +126,7 @@ Cubren login, permisos por rol, inyección SQL, RUT y patentes, conductores, pro
 
 ## API (resumen)
 
-`POST /api/auth/login` · `/api/orders` (listar, crear, `/:id`, `/:id/schedule`, `/:id/status`, `/export/excel`, `/export/pdf`) · `/api/my-route` · `/api/customers` · `/api/vehicles` · `/api/drivers` · `/api/products` (listar, crear, editar y `/:id/active`) · `/api/otif` (`?groupBy=month|week`, `/export/pdf`) · `/api/alerts`
+`POST /api/auth/login` · `/api/orders` (listar, crear, `/:id`, `/:id/schedule`, `/:id/status`, `/export/excel`, `/export/pdf`) · `/api/my-route` · `/api/customers` · `/api/vehicles` · `/api/drivers` · `/api/products` (listar, crear, editar y `/:id/active`) · `/api/otif` (`?groupBy=month|all`, `/export/pdf`) · `/api/alerts`
 
 Los códigos de estado y roles son en inglés en la base y la API (`Created`, `Scheduled`, `InTransit`, `Delivered`, `Failed`; `dispatcher`, `driver`, `admin`, `supervisor`); las pantallas los muestran en español.
 
