@@ -21,7 +21,10 @@ CREATE TABLE customer (
     name VARCHAR(100) NOT NULL,
     address VARCHAR(255) NOT NULL,
     tax_id VARCHAR(20) NOT NULL,
-    IsActive BIT NOT NULL CONSTRAINT df_customer_IsActive DEFAULT 1
+    latitude DECIMAL(9,6) NULL,    -- delivery point on the map (both or none)
+    longitude DECIMAL(9,6) NULL,
+    IsActive BIT NOT NULL CONSTRAINT df_customer_IsActive DEFAULT 1,
+    CONSTRAINT ck_customer_point CHECK ((latitude IS NULL AND longitude IS NULL) OR (latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180))
 );
 
 -- 3. Vehicles. inspection_expiry is the expiry of the "revisión técnica"
@@ -85,7 +88,16 @@ CREATE TABLE order_history (
     user_id INT NULL FOREIGN KEY REFERENCES app_user(id)
 );
 
--- 8. Container storage service (a second service next to transport).
+-- 8. Last known position of each driver's truck while an order is in transit (one row per driver).
+-- The driver's phone reports it; the row is deleted when the driver has no order in transit.
+CREATE TABLE truck_position (
+    driver_id INT NOT NULL PRIMARY KEY FOREIGN KEY REFERENCES app_user(id),
+    latitude DECIMAL(9,6) NOT NULL,
+    longitude DECIMAL(9,6) NOT NULL,
+    recorded_at DATETIME NOT NULL DEFAULT GETDATE()
+);
+
+-- 9. Container storage service (a second service next to transport).
 -- container_number follows ISO 6346 (4 letters + 6 digits + check digit).
 -- Flow: Expected -> InYard (arrival) -> Departed. Perishable cargo travels in a reefer and has a set temperature.
 CREATE TABLE container (
@@ -110,7 +122,7 @@ CREATE TABLE container (
     CONSTRAINT ck_container_perishable CHECK (cargo_type = 'dry' OR (container_type IN ('20RF', '40RF') AND temperature_c IS NOT NULL))
 );
 
--- 9. Everything that happens to a container (announced, arrived, moved, departed)
+-- 10. Everything that happens to a container (announced, arrived, moved, departed)
 CREATE TABLE container_event (
     id INT IDENTITY(1,1) PRIMARY KEY,
     container_id INT NOT NULL FOREIGN KEY REFERENCES container(id),
@@ -131,9 +143,9 @@ INSERT INTO app_user (name, email, password_hash, role) VALUES
 ('Pedro Conductor', 'driver2@swot.cl', '$2b$10$in5zTSAbMxTHDsQRhGmGHeivVrONc/GFO1utYKvmmIzosFfuDZt3W', 'driver'),
 ('Operador de Patio', 'patio@swot.cl', '$2b$10$in5zTSAbMxTHDsQRhGmGHeivVrONc/GFO1utYKvmmIzosFfuDZt3W', 'yard');
 
-INSERT INTO customer (name, address, tax_id) VALUES
-('Empresa Alpha', 'Av. Siempre Viva 742', '76.123.456-0'),
-('Comercial Beta', 'Calle Falsa 123', '77.987.654-3');
+INSERT INTO customer (name, address, tax_id, latitude, longitude) VALUES
+('Empresa Alpha', 'Av. Siempre Viva 742', '76.123.456-0', -33.045800, -71.619700),
+('Comercial Beta', 'Calle Falsa 123', '77.987.654-3', -33.437200, -70.650600);
 
 -- The second vehicle has an expired inspection, useful to test the scheduling rules and the alerts
 INSERT INTO vehicle (plate, capacity_kg, inspection_expiry) VALUES

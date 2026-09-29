@@ -90,11 +90,37 @@ BEGIN
     INSERT INTO order_history (order_id, previous_status, new_status, user_id)
     VALUES (@order_id, @previous_status, @new_status, @user_id);
 
+    -- The truck stops being tracked when its driver has no other order in transit
+    IF @new_status IN ('Delivered', 'Failed')
+        DELETE FROM truck_position
+        WHERE driver_id = (SELECT driver_id FROM transport_order WHERE id = @order_id)
+          AND NOT EXISTS (SELECT 1 FROM transport_order WHERE driver_id = truck_position.driver_id AND status = 'InTransit');
+
     COMMIT;
 END;
 GO
 
--- 4. Announce a container (creates it as Expected and records the first event)
+-- 4. Save the last known position of a driver's truck
+CREATE OR ALTER PROCEDURE sp_save_truck_position
+    @driver_id INT,
+    @latitude DECIMAL(9,6),
+    @longitude DECIMAL(9,6)
+AS
+BEGIN
+    SET XACT_ABORT ON;
+    BEGIN TRAN;
+
+    UPDATE truck_position SET latitude = @latitude, longitude = @longitude, recorded_at = GETDATE()
+    WHERE driver_id = @driver_id;
+
+    IF @@ROWCOUNT = 0
+        INSERT INTO truck_position (driver_id, latitude, longitude) VALUES (@driver_id, @latitude, @longitude);
+
+    COMMIT;
+END;
+GO
+
+-- 5. Announce a container (creates it as Expected and records the first event)
 CREATE OR ALTER PROCEDURE sp_create_container
     @container_number VARCHAR(11),
     @customer_id INT,
@@ -128,7 +154,7 @@ BEGIN
 END;
 GO
 
--- 5. Arrival, move inside the yard, or departure of a container (the API checks the allowed transitions)
+-- 6. Arrival, move inside the yard, or departure of a container (the API checks the allowed transitions)
 CREATE OR ALTER PROCEDURE sp_register_container_event
     @container_id INT,
     @event_type VARCHAR(10),

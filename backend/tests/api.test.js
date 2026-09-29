@@ -48,6 +48,7 @@ after(async () => {
     }
     for (const id of created.containers) await run(`DELETE FROM container_event WHERE container_id = ${id}; DELETE FROM container WHERE id = ${id}`);
     for (const id of created.products) await run(`DELETE FROM product WHERE id = ${id}`);
+    for (const id of created.drivers) await run(`DELETE FROM truck_position WHERE driver_id = ${id}`);
     for (const id of created.drivers) await run(`DELETE FROM app_user WHERE id = ${id}`);
     for (const id of created.customers) await run(`DELETE FROM customer WHERE id = ${id}`);
     for (const id of created.vehicles) await run(`DELETE FROM vehicle WHERE id = ${id}`);
@@ -279,4 +280,58 @@ test('containers: summary and alerts by service', async () => {
     const dispatcherAlerts = (await call('GET', '/alerts', { token: tokens.dispatcher })).body;
     assert.deepEqual([dispatcherAlerts.overstayContainers.length, dispatcherAlerts.overdueContainers.length], [0, 0]); // transport alerts only
     assert.equal((await call('GET', '/alerts', { token: tokens.driver })).status, 403);
+});
+
+test('maps: customer points, the driver reports the truck and the supervisor sees the fleet', async () => {
+    // Customer delivery point: both coordinates or none, inside the valid ranges
+    const customer = { name: 'ZZ Map Customer', taxId: '22.222.222-2', address: 'Map street 1' };
+    assert.equal((await call('POST', '/customers', { token: tokens.admin, body: { ...customer, latitude: -33.05 } })).status, 400);
+    assert.equal((await call('POST', '/customers', { token: tokens.admin, body: { ...customer, latitude: 200, longitude: -71.5 } })).status, 400);
+    const made = await call('POST', '/customers', { token: tokens.admin, body: { ...customer, latitude: -33.05, longitude: -71.55 } });
+    assert.equal(made.status, 201);
+    created.customers.push(made.body.id);
+    const listed = (await call('GET', '/customers?search=ZZ%20Map', { token: tokens.admin })).body[0];
+    assert.deepEqual([listed.latitude, listed.longitude], [-33.05, -71.55]);
+
+    // A brand new driver, so the real drivers' positions are never touched
+    const driver = { name: 'ZZ Map Driver', email: 'zz.map.driver@swot.cl', password: 'abcd1234' };
+    const driverMade = await call('POST', '/drivers', { token: tokens.admin, body: driver });
+    created.drivers.push(driverMade.body.id);
+    const driverToken = (await call('POST', '/auth/login', { body: { email: driver.email, password: driver.password } })).body.token;
+
+    const order = await call('POST', '/orders', { token: tokens.dispatcher, body: { customerId: made.body.id, weightKg: 10 } });
+    created.orders.push(order.body.id);
+    await call('PATCH', `/orders/${order.body.id}/schedule`, { token: tokens.dispatcher, body: { vehicleId: 1, driverId: driverMade.body.id } });
+
+    // The route carries the delivery point of each order
+    const route = (await call('GET', '/my-route', { token: driverToken })).body;
+    assert.deepEqual([route[0].customerLatitude, route[0].customerLongitude], [-33.05, -71.55]);
+
+    const position = { latitude: -33.02, longitude: -71.5 };
+    assert.equal((await call('POST', '/my-route/position', { token: driverToken, body: position })).status, 409); // nothing in transit yet
+    await call('PATCH', `/orders/${order.body.id}/status`, { token: driverToken, body: { status: 'InTransit' } });
+    assert.equal((await call('POST', '/my-route/position', { token: driverToken, body: { latitude: 'north', longitude: 1 } })).status, 400);
+    assert.equal((await call('POST', '/my-route/position', { token: driverToken, body: { latitude: 95, longitude: 1 } })).status, 400);
+    assert.equal((await call('POST', '/my-route/position', { token: tokens.dispatcher, body: position })).status, 403);
+    assert.equal((await call('POST', '/my-route/position', { token: driverToken, body: position })).status, 200);
+    assert.equal((await call('POST', '/my-route/position', { token: driverToken, body: { latitude: -33.03, longitude: -71.52 } })).status, 200); // updates the same row
+
+    // Who can see the fleet
+    assert.equal((await call('GET', '/fleet', { token: tokens.dispatcher })).status, 403);
+    assert.equal((await call('GET', '/fleet', { token: driverToken })).status, 403);
+    const fleet = (await call('GET', '/fleet', { token: tokens.supervisor })).body;
+    const truck = fleet.find((t) => t.orderId === order.body.id);
+    assert.equal(truck.driverName, 'ZZ Map Driver');
+    assert.deepEqual([truck.position.latitude, truck.position.longitude], [-33.03, -71.52]);
+    assert.ok(truck.position.secondsAgo >= 0 && truck.position.secondsAgo < 60);
+    assert.deepEqual([truck.destination.latitude, truck.destination.longitude], [-33.05, -71.55]);
+    assert.equal((await call('GET', '/fleet', { token: tokens.admin })).status, 200);
+
+    // Delivering ends the tracking: the truck leaves the map and its position is deleted
+    const delivered = await call('PATCH', `/orders/${order.body.id}/status`, { token: driverToken, body: { status: 'Delivered', receiverTaxId: '11.111.111-1', deliveryPhoto: TINY_PNG } });
+    assert.equal(delivered.status, 200);
+    assert.equal((await call('GET', '/fleet', { token: tokens.supervisor })).body.some((t) => t.orderId === order.body.id), false);
+    const pool = await poolPromise;
+    const left = await pool.request().query(`SELECT COUNT(*) AS n FROM truck_position WHERE driver_id = ${driverMade.body.id}`);
+    assert.equal(left.recordset[0].n, 0);
 });
