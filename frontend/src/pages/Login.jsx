@@ -2,50 +2,75 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import PantallaCarga from '../components/PantallaCarga';
 
-const PASSWORD_DEMO = 'hash_simulado_123';
+const DEMO_PASSWORD = 'hash_simulado_123';
+const DEMO_ACCOUNTS = [
+    ['Despachador', 'despachador@swot.cl'],
+    ['Conductor', 'conductor@swot.cl'],
+    ['Supervisor', 'supervisor@swot.cl'],
+    ['Admin', 'admin@swot.cl'],
+];
+const MIN_SPLASH_MS = 1200;
 
 function Login() {
     const [email, setEmail] = useState('despachador@swot.cl');
-    const [password, setPassword] = useState(PASSWORD_DEMO);
+    const [password, setPassword] = useState(DEMO_PASSWORD);
     const [error, setError] = useState('');
-    const [redirigiendo, setRedirigiendo] = useState(false);
+    const [loggingIn, setLoggingIn] = useState(false);
+    const [flipped, setFlipped] = useState(false);
+    const [resetEmail, setResetEmail] = useState('');
+    const [resetSent, setResetSent] = useState(false);
     const navigate = useNavigate();
+
+    // Visual only: no email is sent yet
+    const handleReset = (e) => {
+        e.preventDefault();
+        setResetSent(true);
+    };
+
+    const flip = (toBack) => {
+        setFlipped(toBack);
+        if (!toBack) setResetSent(false);
+    };
 
     const handleLogin = async (e) => {
         e.preventDefault();
         setError('');
-        // Pasa directo a la pantalla de carga mientras se valida el login
-        setRedirigiendo(true);
-        const inicio = Date.now();
+        // Goes straight to the loading screen while the login is checked
+        setLoggingIn(true);
+        const startedAt = Date.now();
         try {
-            const response = await api.post('/auth/login', { email, password });
-            localStorage.setItem('token', response.data.token);
-            localStorage.setItem('rol', response.data.rol);
-            // La pantalla de carga se ve al menos 1,2 s en total, aunque la API responda rápido
-            const restante = Math.max(0, 1200 - (Date.now() - inicio));
-            setTimeout(() => {
-                navigate(response.data.rol === 'conductor' ? '/conductor' : '/dashboard');
-            }, restante);
+            const { data } = await api.post('/auth/login', { email, password });
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('role', data.role);
+            // The loading screen stays at least MIN_SPLASH_MS in total, even if the API answers fast
+            setTimeout(() => navigate(data.role === 'driver' ? '/route' : '/orders'), Math.max(0, MIN_SPLASH_MS - (Date.now() - startedAt)));
         } catch (err) {
-            // Si falla, se vuelve al formulario con el mensaje de error
+            // On failure it goes back to the form with the error message
             setError(err.response?.data?.error || 'No se pudo conectar con el servidor');
-            setRedirigiendo(false);
+            setLoggingIn(false);
         }
     };
 
-    const usarDemo = (correo) => {
-        setEmail(correo);
-        setPassword(PASSWORD_DEMO);
+    const pickDemo = (mail) => {
+        setEmail(mail);
+        setPassword(DEMO_PASSWORD);
     };
 
-    if (redirigiendo) return <PantallaCarga mensaje="Ingresando…" />;
+    if (loggingIn) {
+        return (
+            <div className="splash" role="status">
+                <div className="spinner" />
+                <p>Ingresando…</p>
+            </div>
+        );
+    }
 
     return (
         <div className="login-page">
-            <div className="login-card">
-                <div className="brand">
+          <div className={`flip ${flipped ? 'flip-on' : ''}`}>
+            <div className="flip-face login-card" inert={flipped}>
+                <div className="brand login-brand">
                     <span className="brand-logo">🚚</span>
                     <span>SWOT</span>
                 </div>
@@ -64,14 +89,49 @@ function Login() {
                     </div>
                     {error && <div className="error-box">{error}</div>}
                     <button className="btn btn-primary btn-block" type="submit">Ingresar</button>
+                    <button type="button" className="link-btn" onClick={() => flip(true)}>¿Olvidaste tu contraseña?</button>
                 </form>
 
-                <p className="demo-label">Cuentas de prueba</p>
                 <div className="demo-row">
-                    <button type="button" className="btn btn-sm" onClick={() => usarDemo('despachador@swot.cl')}>Despachador</button>
-                    <button type="button" className="btn btn-sm" onClick={() => usarDemo('conductor@swot.cl')}>Conductor</button>
+                    <span className="demo-label">Probar como</span>
+                    {DEMO_ACCOUNTS.map(([label, mail]) => (
+                        <button key={mail} type="button" className={`chip ${email === mail ? 'chip-on' : ''}`} onClick={() => pickDemo(mail)}>{label}</button>
+                    ))}
                 </div>
             </div>
+
+            <div className="flip-face flip-back login-card" inert={!flipped}>
+                <div className="brand login-brand">
+                    <span className="brand-logo">🚚</span>
+                    <span>SWOT</span>
+                </div>
+
+                <div className="reset-main">
+                    <span className="reset-icon">{resetSent ? '✅' : '✉️'}</span>
+                    <h2 className="reset-title">{resetSent ? '¡Revisa tu correo!' : '¿Olvidaste tu contraseña?'}</h2>
+
+                    {resetSent ? (
+                        <p className="reset-note">
+                            Si <strong>{resetEmail}</strong> está registrado, te enviaremos un correo con el detalle para restablecer tu contraseña.
+                        </p>
+                    ) : (
+                        <>
+                            <p className="reset-text">Ingresa tu correo y te enviaremos un correo con el detalle.</p>
+                            <form className="login-form" onSubmit={handleReset}>
+                                <div className="field">
+                                    <label>Correo</label>
+                                    <input className="input" type="email" value={resetEmail}
+                                        onChange={(e) => setResetEmail(e.target.value)} required />
+                                </div>
+                                <button className="btn btn-light btn-block" type="submit">Enviar</button>
+                            </form>
+                        </>
+                    )}
+                </div>
+
+                <button type="button" className="link-btn" onClick={() => flip(false)}>← Volver a iniciar sesión</button>
+            </div>
+          </div>
         </div>
     );
 }
