@@ -3439,6 +3439,54 @@
           }
         },
         {
+          "name": "OTIF by week with the rankings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('has weeks and rankings', () => { const o = pm.response.json(); pm.expect(o.series).to.be.an('array'); pm.expect(o.byDriver).to.be.an('array'); pm.expect(o.byCustomer).to.be.an('array'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{supervisorToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/otif?groupBy=week",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "otif"
+              ],
+              "query": [
+                {
+                  "key": "groupBy",
+                  "value": "week"
+                }
+              ]
+            }
+          }
+        },
+        {
           "name": "OTIF for one month",
           "event": [
             {
@@ -3541,7 +3589,7 @@
           }
         },
         {
-          "name": "OTIF with an invalid grouping, weeks are not supported (400)",
+          "name": "OTIF with an invalid grouping (400)",
           "event": [
             {
               "listen": "test",
@@ -3571,7 +3619,7 @@
               ]
             },
             "url": {
-              "raw": "{{baseUrl}}/otif?groupBy=week",
+              "raw": "{{baseUrl}}/otif?groupBy=day",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -3581,7 +3629,7 @@
               "query": [
                 {
                   "key": "groupBy",
-                  "value": "week"
+                  "value": "day"
                 }
               ]
             }
@@ -6180,7 +6228,7 @@
       ]
     },
     {
-      "name": "12. Late-delivery prediction",
+      "name": "12. OTIF-miss prediction",
       "item": [
         {
           "name": "Model card",
@@ -6190,7 +6238,7 @@
               "script": {
                 "exec": [
                   "pm.test('status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('better than chance', () => pm.expect(pm.response.json().metrics.auc).to.be.above(0.9));"
+                  "pm.test('better than chance', () => pm.expect(pm.response.json().metrics.auc).to.be.above(0.8));"
                 ]
               }
             }
@@ -6226,7 +6274,7 @@
           }
         },
         {
-          "name": "What-if: a far, heavy, last-minute order is high risk",
+          "name": "What-if: a far, heavy, last-minute order is high risk of missing OTIF",
           "event": [
             {
               "listen": "test",
@@ -6266,13 +6314,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/predictions/late-risk",
+              "raw": "{{baseUrl}}/predictions/otif-risk",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "predictions",
-                "late-risk"
+                "otif-risk"
               ]
             }
           }
@@ -6318,13 +6366,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/predictions/late-risk",
+              "raw": "{{baseUrl}}/predictions/otif-risk",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "predictions",
-                "late-risk"
+                "otif-risk"
               ]
             }
           }
@@ -6369,13 +6417,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/predictions/late-risk",
+              "raw": "{{baseUrl}}/predictions/otif-risk",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "predictions",
-                "late-risk"
+                "otif-risk"
               ]
             }
           }

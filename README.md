@@ -1,11 +1,34 @@
-# SWOT · Sistema Web de Órdenes de Transporte
+<div align="center">
+
+# 🚚 SWOT · Sistema Web de Órdenes de Transporte
+
+**Transporte de carga y almacenaje de contenedores en un solo sistema**, con OTIF, mapas en vivo, cobros y un modelo de IA.
+
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white&labelColor=20232a)
+![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-24_LTS-339933?logo=nodedotjs&logoColor=white)
+![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)
+![SQL Server](https://img.shields.io/badge/SQL_Server-2022-CC2927?logo=microsoftsqlserver&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-SQL_Server-2496ED?logo=docker&logoColor=white)
+![JWT](https://img.shields.io/badge/Auth-JWT_%2B_bcrypt-000000?logo=jsonwebtokens&logoColor=white)
+![Leaflet](https://img.shields.io/badge/Mapas-Leaflet_%2B_OpenStreetMap-199900?logo=leaflet&logoColor=white)
+
+![Pruebas](https://img.shields.io/badge/pruebas_del_backend-18_pasan-2f7a53)
+![Postman](https://img.shields.io/badge/Postman-133_peticiones_·_166_verificaciones-FF6C37?logo=postman&logoColor=white)
+![IA](https://img.shields.io/badge/IA-regresión_logística_(datos_simulados)-8a6418)
+![Estado](https://img.shields.io/badge/estado-proyecto_de_práctica-3d5a99)
+
+[Capturas](#capturas) · [Roles](#qué-puede-hacer-cada-rol) · [Arquitectura](#arquitectura) · [Puesta en marcha](#puesta-en-marcha) · [Documentación](docs/)
+
+</div>
+
+---
 
 Proyecto de práctica personal (caso ficticio **Neo Tech Logística**, un operador logístico de carga seca y perecedera). Un solo sistema para dos servicios:
 
-- 🚚 **Transporte:** los despachadores planifican órdenes de transporte (OT), los conductores registran cada entrega desde el celular con la foto de la guía firmada, y los supervisores ven los indicadores (OTIF), la flota en el mapa y el riesgo de atraso de cada OT.
+- 🚚 **Transporte:** los despachadores planifican órdenes de transporte (OT), los conductores registran cada entrega desde el celular con la foto de la guía firmada, y los supervisores ven los indicadores (OTIF), la flota en el mapa y el riesgo de incumplimiento de cada OT.
 - 📦 **Almacenaje de contenedores:** el operador de patio registra cuándo llega cada contenedor, dónde queda, cuándo se mueve y cuándo sale; el sistema **cobra los días que pasan de los días libres** y avisa de los excedidos.
 
-**Stack:** React 19 + Vite · Node.js + Express 5 · SQL Server 2022 (procedimientos almacenados) · JWT · Leaflet/OpenStreetMap · modelo de IA propio en JavaScript
 
 ## Contenido
 
@@ -23,18 +46,41 @@ Proyecto de práctica personal (caso ficticio **Neo Tech Logística**, un operad
 
 ## Capturas
 
-| | |
-|---|---|
-| ![Inicio de sesión](docs/screenshots/01-login.png) **Inicio de sesión** con la tarjeta que gira para recuperar la contraseña | ![Órdenes](docs/screenshots/02-ordenes.png) **Órdenes** del despachador, con gráfico por estado y alertas |
-| ![Ruta del conductor](docs/screenshots/03-ruta-conductor.png) **Ruta del conductor** en el celular, con el mapa de sus paradas | ![Flota](docs/screenshots/04-flota.png) **Flota** en ruta para el supervisor |
-| ![OTIF](docs/screenshots/05-otif.png) **OTIF** por mes, con filtros por cliente y conductor | ![Predicciones](docs/screenshots/06-predicciones.png) **Predicciones**: riesgo de atraso de cada OT |
-| ![Contenedores](docs/screenshots/07-contenedores.png) **Contenedores** como tarjetas grandes para tablet | ![Cobros](docs/screenshots/08-cobros.png) **Cobros** de almacenaje y tarifa por tipo |
+### Inicio de sesión y navegación
+
+| Inicio de sesión | Recuperar contraseña (la tarjeta gira) |
+|:--:|:--:|
+| ![Inicio de sesión](docs/screenshots/01-login.png) | ![Recuperar contraseña](docs/screenshots/11-recuperar.png) |
+
+| Menú en el computador (un desplegable por área) | Menú en el celular |
+|:--:|:--:|
+| ![Menú de escritorio](docs/screenshots/09-menu-escritorio.png) | <img src="docs/screenshots/10-menu-movil.png" width="300" alt="Menú móvil"> |
+
+### Transporte
+
+| Órdenes del despachador | Ruta del conductor (celular) |
+|:--:|:--:|
+| ![Órdenes](docs/screenshots/02-ordenes.png) | <img src="docs/screenshots/03-ruta-conductor.png" width="300" alt="Ruta del conductor"> |
+
+| Flota en ruta | Indicador OTIF con filtros y rankings |
+|:--:|:--:|
+| ![Flota](docs/screenshots/04-flota.png) | ![OTIF](docs/screenshots/05-otif.png) |
+
+### Predicción con IA
+
+![Predicciones](docs/screenshots/06-predicciones.png)
+
+### Almacenaje
+
+| Contenedores (tablet) | Cobros |
+|:--:|:--:|
+| <img src="docs/screenshots/07-contenedores.png" width="380" alt="Contenedores"> | ![Cobros](docs/screenshots/08-cobros.png) |
 
 ## Qué puede hacer cada rol
 
 | Rol | Puede |
 |---|---|
-| **Despachador** | Crear OT (cliente, fecha comprometida, productos), programarlas asignando vehículo y conductor, filtrarlas y exportarlas a Excel o PDF; ver el riesgo de atraso de las OT abiertas |
+| **Despachador** | Crear OT (cliente, fecha comprometida, productos), programarlas asignando vehículo y conductor, filtrarlas y exportarlas a Excel o PDF; ver el riesgo de incumplir el OTIF de las OT abiertas |
 | **Conductor** | Ver su hoja de ruta con un **mapa de sus próximas paradas** y un enlace "Cómo llegar", iniciar la ruta y registrar la entrega con el **RUT de quien recibe** y la **foto de la guía firmada** (o marcarla como fallida, con confirmación) |
 | **Supervisor** | Ver órdenes, clientes, vehículos, conductores y productos (solo lectura), el **mapa de la flota en ruta**, el **OTIF**, las **predicciones**, las alertas, los contenedores y los **cobros** de almacenaje |
 | **Administrador** | Lo del supervisor, más crear, editar y desactivar clientes, vehículos, conductores y productos, gestionar los contenedores y **cambiar la tarifa** de almacenaje |
@@ -54,7 +100,7 @@ Cualquier usuario puede **recuperar su contraseña** desde el inicio de sesión 
 
 ### OTIF
 
-**On Time In Full:** porcentaje de OT entregadas a la fecha comprometida o antes **y** completas. Una OT fallida cuenta como no cumplida. Se puede ver **por mes o de todo el historial**, y filtrar por **un mes en particular, rango de fechas, cliente y conductor**. Se exporta a PDF con los filtros aplicados.
+**On Time In Full:** porcentaje de OT entregadas a la fecha comprometida o antes **y** completas. Una OT fallida cuenta como no cumplida. Se ve **por semana** (las últimas 12, o las de un mes elegido), **por mes** o **de todo el historial**, y se filtra por **un mes en particular, cliente y conductor**. Debajo, dos rankings muestran el OTIF de **cada conductor** y de **cada cliente** (verde desde 90 %, ámbar desde 70 %). Se exporta a PDF con los filtros aplicados.
 
 ### Mapas y flota
 
@@ -104,11 +150,13 @@ Desde el inicio de sesión, "¿Olvidaste tu contraseña?" pide el correo y enví
 - Al cambiar la contraseña, **las sesiones abiertas antes quedan cerradas**.
 - Sin configuración de correo, el mensaje **se imprime en la consola del backend** (sirve para probar). Para enviarlo de verdad, completa `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` y `MAIL_FROM` en `backend/.env` (el enlace usa `FRONTEND_URL`) (ver `.env.example`).
 
-### Predicción de atraso (IA)
+### Predicción de incumplimiento OTIF (IA)
 
-Un modelo de **regresión logística** estima la probabilidad de que una OT abierta llegue **después de su fecha comprometida**, a partir de la distancia al cliente, el peso, el plazo, la cantidad de productos, la hora de creación y si se entrega un lunes. La pantalla **Predicciones** muestra las OT abiertas de mayor a menor riesgo y un simulador "¿y si…?".
+Un modelo de **regresión logística** estima la probabilidad de que una OT abierta **no cumpla su OTIF** (llegue atrasada **o** incompleta), a partir de la distancia al cliente, el peso, el plazo, la cantidad de productos, la hora de creación y si se entrega un lunes. La pantalla **Predicciones** muestra la tarjeta del modelo, un simulador «¿y si…?» y las OT abiertas de mayor a menor riesgo.
 
-> El modelo se entrena con **datos simulados**: sirve para demostrar la técnica, no para decidir. Detalle en [docs/modelo-ia.md](docs/modelo-ia.md). Para volver a entrenarlo: `npm run train` en `backend`.
+- Se eligió ese objetivo (y no solo «atraso») porque es **exactamente el KPI que mide la empresa** y se puede calcular con datos que el sistema ya guarda: cuando haya historial real se reentrena sin cambiar nada.
+- Con datos simulados detecta ~2 de cada 3 incumplimientos y, revisando solo el 20 % de OT de mayor riesgo, atrapa casi la mitad de las fallas (AUC ≈ 0,85; responder siempre «cumple» acierta 73 %).
+- El modelo se entrena con **datos simulados**: sirve para demostrar la técnica, no para decidir. El análisis completo, con las fases de **CRISP-DM**, está en [docs/modelo-ia.md](docs/modelo-ia.md). Para reentrenarlo: `npm run train` en `backend`.
 
 ## Arquitectura
 
@@ -118,7 +166,7 @@ flowchart LR
     subgraph API["Backend · Express 5"]
         direction TB
         MW["Seguridad<br/>helmet · CORS · límites · JWT + rol"] --> RT["routes.js"] --> CT["controllers/"]
-        CT --> ML["ml/<br/>modelo de atraso"]
+        CT --> ML["ml/<br/>modelo OTIF"]
     end
     CT -- "consultas parametrizadas<br/>y procedimientos almacenados" --> DB[("SQL Server 2022<br/>(Docker)")]
     CT -. "recuperar contraseña" .-> SMTP["Correo SMTP<br/>(opcional)"]
@@ -153,7 +201,7 @@ swot-mvp/
 │   ├── upgrades/            Migraciones para una base que ya existe
 │   └── demo/                Datos de demostración (OTIF)
 ├── docs/                    Arquitectura, modelo de IA y capturas
-└── postman/                 Colección con 132 peticiones
+└── postman/                 Colección con 133 peticiones
 ```
 
 ## Puesta en marcha
@@ -240,9 +288,9 @@ cd backend
 npm test
 ```
 
-Son 18 pruebas: login y permisos por rol, inyección SQL, RUT y patentes, conductores, productos, cálculo de peso, reglas de programación, prueba de entrega, OTIF (con sus filtros), alertas, exportaciones, el ciclo completo de un contenedor, los mapas, la **recuperación de contraseña** (enlace de un solo uso, sesiones anteriores cerradas), el **cobro de almacenaje** (días libres, tarifa, exportaciones) y el **modelo de predicción**.
+Son 18 pruebas: login y permisos por rol, inyección SQL, RUT y patentes, conductores, productos, cálculo de peso, reglas de programación, prueba de entrega, OTIF (semanas, filtros y rankings), alertas, exportaciones, el ciclo completo de un contenedor, los mapas, la **recuperación de contraseña** (enlace de un solo uso, sesiones anteriores cerradas), el **cobro de almacenaje** (días libres, tarifa, exportaciones) y el **modelo de predicción** (que supere a la respuesta ingenua).
 
-**Colección de Postman:** importa `postman/SWOT.postman_collection.json` y ejecútala completa con el Collection Runner (con el backend en `http://localhost:3000/api`). Son 132 peticiones con 164 verificaciones que recorren el flujo de una OT y de un contenedor con los 5 roles y comprueban permisos, validación y seguridad. Por línea de comandos: `npx newman run postman/SWOT.postman_collection.json`.
+**Colección de Postman:** importa `postman/SWOT.postman_collection.json` y ejecútala completa con el Collection Runner (con el backend en `http://localhost:3000/api`). Son 133 peticiones con 166 verificaciones que recorren el flujo de una OT y de un contenedor con los 5 roles y comprueban permisos, validación y seguridad. Por línea de comandos: `npx newman run postman/SWOT.postman_collection.json`.
 
 - Incluye intentos de login fallidos a propósito y pedidos de recuperación de contraseña, que tienen límite: **no la ejecutes dos veces seguidas en menos de 2 minutos** (respondería 429).
 - No borra lo que crea: si la corres contra tu base real, limpia esos registros (clientes y productos que empiezan con `Postman`, conductores `postman.…@swot.cl`, contenedores `PMNU…` y vehículos con revisión al 2030-01-01).
@@ -295,8 +343,8 @@ Todas van bajo `/api`, con `Authorization: Bearer <token>` salvo el login y la r
 | Ruta del conductor | `GET /my-route` · `POST /my-route/position` | Conductor |
 | Flota | `GET /fleet` | Supervisor, administrador |
 | Catálogos | `/customers` · `/vehicles` · `/drivers` · `/products` (listar, crear, editar y `PATCH /:id/active`) | Leen todos menos el conductor; escribe el administrador |
-| OTIF | `GET /otif` (`groupBy=month\|all`, `from`, `to`, `customerId`, `driverId`) · `GET /otif/export/pdf` | Supervisor, administrador |
-| Predicciones | `GET /predictions/model` · `GET /predictions/open-orders` · `POST /predictions/late-risk` | Despachador, supervisor, administrador |
+| OTIF | `GET /otif` (`groupBy=week\|month\|all`, `from`, `to`, `customerId`, `driverId`) · `GET /otif/export/pdf` | Supervisor, administrador |
+| Predicciones | `GET /predictions/model` · `GET /predictions/open-orders` · `POST /predictions/otif-risk` | Despachador, supervisor, administrador |
 | Contenedores | `GET/POST /containers` · `GET /containers/summary` · `GET/PUT /containers/:id` · `POST /containers/:id/arrive` · `/move` · `/depart` | Patio y administrador escriben; supervisor lee |
 | Cobros | `GET /billing` (`customerId`, `status`) · `GET /billing/export/excel` · `/export/pdf` | Supervisor, administrador |
 | Tarifa | `GET /storage-rates` · `PUT /storage-rates/:type` | Leen patio, supervisor y administrador; edita el administrador |

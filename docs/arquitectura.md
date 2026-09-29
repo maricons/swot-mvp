@@ -15,7 +15,7 @@ flowchart LR
         SEC["helmet · CORS · límites de intentos<br/>JWT + rol en cada ruta"]
         RT["routes.js"]
         CT["controllers/<br/>orden, cliente, vehículo, conductor, producto,<br/>contenedor, cobros, OTIF, alertas, flota,<br/>predicciones, auth"]
-        ML["ml/<br/>modelo de riesgo de atraso<br/>(regresión logística)"]
+        ML["ml/<br/>modelo de riesgo de incumplir OTIF<br/>(regresión logística)"]
         UT["utils/<br/>validate · pdf · mailer"]
     end
 
@@ -40,7 +40,7 @@ flowchart LR
 | Rutas | `backend/src/routes.js` | Tabla única de "qué ruta, qué controlador, qué roles" | |
 | Lógica | `backend/src/controllers` | Valida la entrada, aplica las reglas de negocio y arma la respuesta | No arma SQL con texto del usuario |
 | Datos | `database/` | Esquema, procedimientos almacenados (los cambios de estado son transacciones) y scripts de migración | |
-| IA | `backend/ml` | Genera datos simulados, entrena y predice el riesgo de atraso (ver [modelo-ia.md](modelo-ia.md)) | |
+| IA | `backend/ml` | Genera datos simulados, entrena y predice el riesgo de incumplir el OTIF (ver [modelo-ia.md](modelo-ia.md)) | |
 
 ## Los dos servicios
 
@@ -53,7 +53,7 @@ flowchart TB
     subgraph T["Servicio de transporte"]
         direction LR
         OT[Órdenes de transporte] --> RUTA[Ruta del conductor] --> ENT[Entrega + guía firmada] --> OTIF[OTIF]
-        OT --> PRED[Riesgo de atraso]
+        OT --> PRED[Riesgo de incumplir OTIF]
         RUTA --> FLOTA[Mapa de la flota]
     end
     subgraph A["Servicio de almacenaje"]
@@ -101,7 +101,7 @@ swot-mvp/
 ├── README.md                    Visión general y puesta en marcha
 ├── docs/
 │   ├── arquitectura.md         Este documento
-│   ├── modelo-ia.md            El modelo de riesgo de atraso
+│   ├── modelo-ia.md            El modelo de riesgo de incumplir OTIF
 │   └── screenshots/            Capturas usadas en el README
 ├── backend/
 │   ├── server.js               Arranque: helmet, CORS, límites generales, /api
@@ -126,7 +126,7 @@ swot-mvp/
 │   ├── procedures.sql          Procedimientos almacenados
 │   ├── upgrades/               Migraciones para una base que ya existe
 │   └── demo/                   Datos de demostración (OTIF)
-└── postman/                    Colección con 132 peticiones
+└── postman/                    Colección con 133 peticiones
 ```
 
 ## Flujos que conviene conocer
