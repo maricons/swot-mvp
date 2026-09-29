@@ -559,17 +559,26 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .cargo { font-size: 13px; font-weight: 600; color: var(--muted); }
 .cargo-cold { color: #2a7d90; }
 
-/* ===== Service switch (transport / storage) ===== */
-.service-switch { display: inline-flex; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 3px; gap: 2px; }
-.service-switch button { border: none; background: none; font: inherit; font-size: 13px; font-weight: 700; color: var(--muted); padding: 7px 14px; border-radius: 9px; cursor: pointer; white-space: nowrap; transition: background 0.15s, color 0.15s; }
-.service-switch button:hover { color: var(--primary); }
-.service-switch .service-on { background: var(--surface); color: var(--primary); box-shadow: 0 1px 3px rgba(17, 76, 95, 0.15); }
-.nav-service { display: none; }
+/* ===== Navigation groups (drop-downs on desktop, sections in the mobile menu) ===== */
+.nav-group { position: relative; }
+.nav-trigger { border: none; background: none; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.nav-trigger:hover { background: var(--primary-soft); color: var(--primary); }
+.caret { font-size: 10px; transition: transform 0.15s; }
+.nav-group-open .caret { transform: rotate(180deg); }
+.nav-heading { display: none; }
+.nav-menu {
+  display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; min-width: 190px;
+  flex-direction: column; gap: 2px; padding: 6px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow);
+}
+.nav-group-open .nav-menu { display: flex; animation: fade 0.12s ease; }
+.nav-menu .nav-link { padding: 10px 12px; }
 @media (max-width: 800px) {
-  .topbar-service { display: none; }
-  .nav-service { display: block; padding: 4px 14px 10px; }
-  .nav-service .service-switch { width: 100%; }
-  .nav-service .service-switch button { flex: 1; }
+  .nav-trigger { display: none; }
+  .nav-heading { display: block; padding: 14px 14px 4px; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .nav-menu { display: flex; position: static; min-width: 0; padding: 0; border: none; box-shadow: none; background: none; animation: none; }
+  .nav-menu .nav-link { padding: 12px 14px 12px 24px; }
+  .nav { max-height: calc(100vh - 64px); overflow-y: auto; }
 }
 
 /* ===== Maps ===== */
@@ -644,3 +653,12 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .whatif { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 .whatif-result { margin-top: 16px; font-size: 18px; }
 @media (max-width: 600px) { .influence li { grid-template-columns: 1fr; gap: 4px; } }
+
+/* OTIF rankings */
+.rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.rank li { display: grid; grid-template-columns: minmax(90px, 1.2fr) 2fr auto; gap: 10px; align-items: center; font-size: 14px; }
+.rank-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-val { white-space: nowrap; }
+.overview.overview-even { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 900px) { .overview.overview-even { grid-template-columns: minmax(0, 1fr); } }
+.filters .field.field-auto { width: auto; }
